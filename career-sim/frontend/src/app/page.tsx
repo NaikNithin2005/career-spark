@@ -2,25 +2,24 @@
 
 import { useState } from 'react';
 import { Sparkles, Map, MessageSquare, GraduationCap } from 'lucide-react';
-import { InputForm } from '@/components/InputForm';
+import { Wizard } from '@/components/Wizard';
 import { RoadmapView } from '@/components/RoadmapView';
 import { MentorChat } from '@/components/MentorChat';
 
 export default function Home() {
   // Application State
   const [roadmapData, setRoadmapData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'input' | 'roadmap'>('input');
+  const [activeTab, setActiveTab] = useState<'wizard' | 'roadmap'>('wizard');
 
-  const handleGenerateValues = async (data: any) => {
-    // In a real app, we'd call the API here.
-    // For now, we'll pass the data to the RoadmapView to trigger loading/fetching.
-    setRoadmapData(data); // Store input to fetch
+  const handleWizardComplete = async (data: any) => {
+    // Data is already structured correctly by Wizard
+    setRoadmapData(data);
     setActiveTab('roadmap');
   };
 
   const handleReset = () => {
     setRoadmapData(null);
-    setActiveTab('input');
+    setActiveTab('wizard');
   };
 
   return (
@@ -39,7 +38,7 @@ export default function Home() {
           <div className="flex items-center gap-4 text-sm font-medium text-slate-400">
             <span className="hidden sm:inline">AI-Powered Career Intelligence</span>
             <div className="h-4 w-[1px] bg-slate-800 hidden sm:block"></div>
-            <span className="text-slate-200">Prototype</span>
+            <span className="text-slate-200">Prototype v2.0</span>
           </div>
         </div>
       </nav>
@@ -48,14 +47,14 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-64px)]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
 
-          {/* Left Panel: Simulator (Input -> Roadmap) */}
+          {/* Left Panel: Wizard or Roadmap */}
           <div className="lg:col-span-8 flex flex-col gap-6 h-full overflow-hidden">
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-1 flex-1 overflow-hidden flex flex-col relative">
               {/* Header inside panel */}
               <div className="p-4 border-b border-slate-800 flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  {activeTab === 'input' ? <GraduationCap className="w-5 h-5 text-purple-400" /> : <Map className="w-5 h-5 text-blue-400" />}
-                  {activeTab === 'input' ? 'Career Profile' : 'Your Career Roadmap'}
+                  {activeTab === 'wizard' ? <GraduationCap className="w-5 h-5 text-purple-400" /> : <Map className="w-5 h-5 text-blue-400" />}
+                  {activeTab === 'wizard' ? 'Design Your Future' : 'Your Career Roadmap'}
                 </h2>
                 {activeTab === 'roadmap' && (
                   <button onClick={handleReset} className="text-xs text-slate-400 hover:text-white transition-colors">
@@ -66,8 +65,8 @@ export default function Home() {
 
               {/* Content Area */}
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {activeTab === 'input' ? (
-                  <InputForm onSubmit={handleGenerateValues} />
+                {activeTab === 'wizard' ? (
+                  <Wizard onComplete={handleWizardComplete} />
                 ) : (
                   <RoadmapView inputData={roadmapData} />
                 )}
