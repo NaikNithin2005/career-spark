@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, MapPin, Briefcase, AlertTriangle, CheckCircle, Search, ArrowRight, BarChart3, Target } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Loader2, TrendingUp, MapPin, Briefcase, AlertTriangle, CheckCircle, Search, ArrowRight, BarChart3, Target, BookOpen, FileText, Code } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MarketInsightsPage() {
@@ -16,6 +17,15 @@ export default function MarketInsightsPage() {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any>(null);
     const [error, setError] = useState('');
+
+    // Prep Modal State
+    const [selectedJob, setSelectedJob] = useState<any>(null);
+    const [prepData, setPrepData] = useState<any>(null);
+    const [prepLoading, setPrepLoading] = useState(false);
+
+    // Project Guide State
+    const [projectGuide, setProjectGuide] = useState<any>(null);
+    const [projectLoading, setProjectLoading] = useState(false);
 
     const handleAnalyze = async () => {
         if (!targetRole || !skills || !location) {
@@ -46,6 +56,54 @@ export default function MarketInsightsPage() {
             setError(e.message || "Something went wrong within the AI analysis.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleJobClick = async (job: any) => {
+        setSelectedJob(job);
+        setPrepLoading(true);
+        setPrepData(null);
+        setProjectGuide(null); // Reset project guide
+
+        try {
+            const res = await fetch('http://localhost:8000/api/job-prep', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    job_title: job.title,
+                    company: job.company,
+                    skills: skills.split(',').map(s => s.trim()).filter(s => s)
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to load prep data");
+            const json = await res.json();
+            setPrepData(json);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setPrepLoading(false);
+        }
+    };
+
+    const handleStartProject = async () => {
+        if (!prepData || !prepData.project_challenge) return;
+        setProjectLoading(true);
+        try {
+            const res = await fetch('http://localhost:8000/api/project-guide', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: prepData.project_challenge.title,
+                    description: prepData.project_challenge.description
+                })
+            });
+            const json = await res.json();
+            setProjectGuide(json);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setProjectLoading(false);
         }
     };
 
@@ -201,9 +259,10 @@ export default function MarketInsightsPage() {
                                     <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                         <Briefcase className="w-5 h-5 text-green-400" /> Curated Job Opportunities
                                     </h3>
+                                    <p className="text-sm text-slate-500 mb-4">Click on a job to generate a preparation plan.</p>
                                     <div className="space-y-4">
                                         {data.recommended_jobs.map((job: any, idx: number) => (
-                                            <Card key={idx} className="bg-slate-900/40 border-slate-800 hover:border-green-500/30 transition-all hover:bg-slate-900 group cursor-pointer">
+                                            <Card key={idx} onClick={() => handleJobClick(job)} className="bg-slate-900/40 border-slate-800 hover:border-green-500/30 transition-all hover:bg-slate-900 group cursor-pointer">
                                                 <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                                     <div>
                                                         <h4 className="text-lg font-bold text-slate-100 group-hover:text-green-400 transition-colors">{job.title}</h4>
@@ -233,6 +292,121 @@ export default function MarketInsightsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Job Prep Dialog */}
+                <Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
+                    <DialogContent className="bg-slate-950 border-slate-800 text-slate-200 max-w-3xl max-h-[85vh] overflow-y-auto custom-scrollbar">
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl text-white">Application Prep Suite</DialogTitle>
+                            <DialogDescription className="text-slate-400">
+                                Customized strategy for {selectedJob?.title} at {selectedJob?.company}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {prepLoading ? (
+                            <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                                <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+                                <p>Generating interview questions and projects...</p>
+                            </div>
+                        ) : prepData ? (
+                            <div className="space-y-8 py-4">
+                                {/* Match Summary */}
+                                <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                                    <p className="text-slate-300 italic">"{prepData.match_summary}"</p>
+                                </div>
+
+                                {/* Interview Questions */}
+                                <div>
+                                    <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                        <BookOpen className="w-5 h-5 text-purple-400" /> Few Interview Questions
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {prepData.interview_questions.map((q: any, i: number) => (
+                                            <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800">
+                                                <div className="flex gap-3">
+                                                    <span className="bg-slate-800 text-slate-400 text-xs font-bold px-2 py-1 rounded h-fit shrink-0">{q.type}</span>
+                                                    <div>
+                                                        <p className="font-semibold text-slate-200 mb-2">{q.question}</p>
+                                                        <p className="text-sm text-slate-400"><span className="text-green-500 font-medium">Tip:</span> {q.answer_tip}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Project Challenge */}
+                                <div>
+                                    <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                        <Code className="w-5 h-5 text-blue-400" /> Portfolio Project Idea
+                                    </h4>
+                                    <div className="bg-gradient-to-br from-slate-900 to-slate-900 border border-blue-900/30 p-6 rounded-xl relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                                            <Code className="w-24 h-24 text-blue-400" />
+                                        </div>
+                                        <h5 className="font-bold text-blue-300 text-lg mb-2">{prepData.project_challenge.title}</h5>
+                                        <p className="text-slate-400 leading-relaxed">{prepData.project_challenge.description}</p>
+
+                                        {!projectGuide && (
+                                            <Button
+                                                onClick={handleStartProject}
+                                                disabled={projectLoading}
+                                                size="sm"
+                                                variant="outline"
+                                                className="mt-4 border-blue-500/30 text-blue-400 hover:text-blue-300"
+                                            >
+                                                {projectLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                                Start Project
+                                            </Button>
+                                        )}
+
+                                        {projectGuide && (
+                                            <div className="mt-6 space-y-4 animate-in fade-in slide-in-from-top-4">
+                                                <div className="h-px bg-slate-800 w-full" />
+                                                <p className="text-sm text-green-400 font-bold">Recommended Tech Stack</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {projectGuide.tech_stack.map((t: string, i: number) => (
+                                                        <Badge key={i} variant="outline" className="border-slate-700 bg-slate-800 text-slate-300">{t}</Badge>
+                                                    ))}
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {projectGuide.steps.map((step: any, i: number) => (
+                                                        <div key={i} className="flex gap-3">
+                                                            <div className="w-6 h-6 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
+                                                                {step.step}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-slate-200 font-medium text-sm">{step.title}</p>
+                                                                <p className="text-slate-400 text-xs">{step.details}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="bg-yellow-900/10 border border-yellow-900/30 p-3 rounded-lg">
+                                                    <p className="text-xs text-yellow-400"><strong>Bonus:</strong> {projectGuide.bonus_challenge}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Resume Keywords */}
+                                <div>
+                                    <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                        <FileText className="w-5 h-5 text-yellow-400" /> Resume Keywords
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {prepData.resume_keywords.map((kw: string, i: number) => (
+                                            <Badge key={i} variant="secondary" className="bg-yellow-900/20 text-yellow-200 border border-yellow-900/50 hover:bg-yellow-900/30">
+                                                + {kw}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+                    </DialogContent>
+                </Dialog>
             </main>
         </div>
     );

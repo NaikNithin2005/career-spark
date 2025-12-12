@@ -7,7 +7,8 @@ from fastapi import File, UploadFile, Form
 import pdfplumber
 import io
 import io
-from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights
+import io
+from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_project_guide
 
 app = FastAPI(title="Career Path Simulator API")
 
@@ -128,6 +129,15 @@ class MarketInput(BaseModel):
     skills: List[str]
     location: str
 
+class JobPrepRequest(BaseModel):
+    job_title: str
+    company: str
+    skills: List[str]
+
+class ProjectGuideRequest(BaseModel):
+    title: str
+    description: str
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Career Path Simulator Backend is running"}
@@ -199,6 +209,33 @@ async def market_insights_endpoint(input_data: MarketInput):
         if "error" in insights:
              raise HTTPException(status_code=500, detail=insights["error"])
         return insights
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/job-prep")
+async def job_prep_endpoint(input_data: JobPrepRequest):
+    try:
+        prep = generate_job_prep(
+            input_data.job_title,
+            input_data.company,
+            input_data.skills
+        )
+        if "error" in prep:
+             raise HTTPException(status_code=500, detail=prep["error"])
+        return prep
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/project-guide")
+async def project_guide_endpoint(input_data: ProjectGuideRequest):
+    try:
+        guide = generate_project_guide(
+            input_data.title,
+            input_data.description
+        )
+        if "error" in guide:
+             raise HTTPException(status_code=500, detail=guide["error"])
+        return guide
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

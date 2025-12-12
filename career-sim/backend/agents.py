@@ -283,6 +283,69 @@ def generate_market_insights(target_role: str, skills: list, location: str):
     """
     return call_gemini_json(MARKET_AGENT_PROMPT, prompt)
 
+JOB_PREP_AGENT_PROMPT = """
+You are a Tech Career Coach & Interviewer.
+For the specific Job Title and Company (optional), provide a targeted preparation guide.
+Provide:
+1. 3 Likely Interview Questions (Technical/Behavioral mixed).
+2. 5 Strategic Resume Keywords to include.
+3. 1 "Portfolio Project" idea that would impress them.
+4. A brief "Why You Match" summary based on user skills.
+
+Return strict JSON:
+{
+  "interview_questions": [
+    { "question": "...", "type": "Technical/Behavioral", "answer_tip": "..." },
+    ...
+  ],
+  "resume_keywords": ["...", "..."],
+  "project_challenge": {
+     "title": "...",
+     "description": "..."
+  },
+  "match_summary": "..."
+}
+"""
+
+def generate_job_prep(job_title: str, company: str, skills: list):
+    prompt = f"""
+    Job Title: {job_title}
+    Company: {company}
+    My Skills: {", ".join(skills)}
+    
+    Create a prep guide.
+    """
+    return call_gemini_json(JOB_PREP_AGENT_PROMPT, prompt)
+
+PROJECT_AGENT_PROMPT = """
+You are a Senior Tech Lead.
+Create a mini-implementation plan for the given Portfolio Project.
+Project Title: {title}
+Description: {description}
+
+Provide:
+1. Tech Stack Recommended (List)
+2. 4-5 Step-by-Step Implementation Tasks
+3. A "Bonus Challenge" to make it stand out.
+
+Return strict JSON:
+{
+  "tech_stack": ["...", "..."],
+  "steps": [
+    {"step": 1, "title": "...", "details": "..."},
+    ...
+  ],
+  "bonus_challenge": "..."
+}
+"""
+
+def generate_project_guide(title: str, description: str):
+    prompt = f"""
+    Project: {title}
+    Context: {description}
+    """
+    return call_gemini_json(PROJECT_AGENT_PROMPT, prompt)
+
 def call_gemini_json(system_prompt, user_prompt):
     """Helper to call Gemini with JSON schema enforcement"""
     for model_name in MODEL_CANDIDATES:
