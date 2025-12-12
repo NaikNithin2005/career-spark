@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uvicorn
-from agents import generate_roadmap_ai, get_mentor_response
+from fastapi import File, UploadFile, Form
+import pdfplumber
+import io
+from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text
 
 app = FastAPI(title="Career Path Simulator API")
 
@@ -74,6 +77,36 @@ class ChatRequest(BaseModel):
     history: List[Dict[str, Any]]
     message: str
 
+# --- Phase 3 Models ---
+class Job(BaseModel):
+    title: str
+    company: str
+    salary: str
+    location: str
+    requirements: List[str]
+    match_reason: str
+
+class Course(BaseModel):
+    title: str
+    provider: str
+    duration: str
+    skills: List[str]
+    difficulty: str
+
+class RecommendationResponse(BaseModel):
+    jobs: List[Job]
+    courses: List[Course]
+
+class ResumeAnalysis(BaseModel):
+    ats_score: int
+    skills_found: List[str]
+    missing_keywords: List[str]
+    improvements: List[str]
+
+class RecRequest(BaseModel):
+    user_data: dict
+    career_path: str
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Career Path Simulator Backend is running"}
@@ -98,6 +131,41 @@ async def chat_endpoint(request: ChatRequest):
     # Map 'user'/'model' roles if needed, currently assuming frontend sends correct format
     response_text = get_mentor_response(request.history, request.message)
     return {"role": "model", "parts": [response_text]}
+
+@app.post("/api/recommendations")
+async def get_recommendations(req: RecRequest):
+    jobs = generate_job_recommendations(req.user_data, req.career_path)
+    courses = generate_course_recommendations(req.user_data, req.career_path)
+    
+    return {
+        "jobs": jobs.get("jobs", []),
+        "courses": courses.get("courses", [])
+    }
+
+@app.post("/api/analyze-resume")
+async def analyze_resume_endpoint(
+    file: UploadFile = File(...), 
+    career_goal: str = Form("General Tech Role")
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+    
+    try:
+        # Extract text using pdfplumber
+        content = await file.read()
+        text = ""
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            for page in pdf.pages:
+                text += page.extract_text() + "\n"
+        
+        if not text.strip():
+             raise HTTPException(status_code=400, detail="Could not extract text from PDF.")
+             
+        analysis = analyze_resume_text(text, career_goal)
+        return analysis
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

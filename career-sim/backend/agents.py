@@ -151,3 +151,113 @@ def get_mentor_response(history: list, message: str):
             continue
 
     return "I'm having trouble thinking right now. I tried multiple AI brains but none responded. Please try again in a moment."
+
+# --- Phase 3 Agents ---
+
+JOB_AGENT_PROMPT = """
+You are a Recruitment AI.
+Based on the user's profile and selected career path, generate 3 realistic job postings they could target.
+For each job:
+1. Job Title
+2. Company Name (Invent realistic, modern tech names)
+3. Salary Range (Realistic for the role/location)
+4. Location (Based on user pref or generic tech hubs)
+5. Key Requirements (3-4 bullets)
+6. Why this matches (1 sentence)
+
+Return strict JSON:
+{
+  "jobs": [
+    {
+      "title": "...",
+      "company": "...",
+      "salary": "...",
+      "location": "...",
+      "requirements": ["...", "..."],
+      "match_reason": "..."
+    }
+  ]
+}
+"""
+
+COURSE_AGENT_PROMPT = """
+You are a Learning Pathway Architect.
+Based on the user's profile and gaps, recommend 3 specific courses/certifications.
+For each course:
+1. Course Title
+2. Provider (e.g., Coursera, Udemy, edX, YouTube)
+3. Duration (e.g., "8 weeks", "10 hours")
+4. Skills Learned (2-3 skills)
+5. Difficulty (Beginner/Intermediate/Advanced)
+
+Return strict JSON:
+{
+  "courses": [
+    {
+      "title": "...",
+      "provider": "...",
+      "duration": "...",
+      "skills": ["...", "..."],
+      "difficulty": "..."
+    }
+  ]
+}
+"""
+
+RESUME_AGENT_PROMPT = """
+You are an expert ATS (Applicant Tracking System) & Career Coach.
+Analyze the candidate's resume text against their target career goals.
+Provide:
+1. ATS Score (0-100) - Be strict but fair.
+2. Key Skills Found (List)
+3. Missing Keywords/Skills (Crucial for their target role)
+4. 3 Specific Actionable Improvements (e.g., "Quantify your impact in the X project")
+
+Return strict JSON:
+{
+  "ats_score": 75,
+  "skills_found": ["...", "..."],
+  "missing_keywords": ["...", "..."],
+  "improvements": ["...", "..."]
+}
+"""
+
+def generate_job_recommendations(user_data: dict, career_path: str):
+    prompt = f"""
+    User Profile: {json.dumps(user_data)}
+    Selected Career Path: {career_path}
+    Generate 3 relevant job postings.
+    """
+    return call_gemini_json(JOB_AGENT_PROMPT, prompt)
+
+def generate_course_recommendations(user_data: dict, career_path: str):
+    prompt = f"""
+    User Profile: {json.dumps(user_data)}
+    Selected Career Path: {career_path}
+    Generate 3 course recommendations to bridge skill gaps.
+    """
+    return call_gemini_json(COURSE_AGENT_PROMPT, prompt)
+
+def analyze_resume_text(resume_text: str, career_goal: str = "General Tech Role"):
+    prompt = f"""
+    Target Role/Goal: {career_goal}
+    Resume Content:
+    {resume_text[:10000]} 
+    """
+    return call_gemini_json(RESUME_AGENT_PROMPT, prompt)
+
+def call_gemini_json(system_prompt, user_prompt):
+    """Helper to call Gemini with JSON schema enforcement"""
+    for model_name in MODEL_CANDIDATES:
+        try:
+            model = get_model(model_name, "application/json")
+            chat = model.start_chat(history=[{"role": "user", "parts": [system_prompt]}])
+            response = chat.send_message(user_prompt)
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Model {model_name} failed: {e}")
+            with open("api_errors.log", "a") as f:
+                import datetime
+                f.write(f"[{datetime.datetime.now()}] {model_name} Error: {e}\n")
+            continue
+    return {"error": "Failed to generate response"}

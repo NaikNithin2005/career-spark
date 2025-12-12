@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Loader2, Circle, Trophy, TrendingUp, Lightbulb } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Circle, Trophy, TrendingUp, Lightbulb, Rocket, FileText } from 'lucide-react';
+import Link from 'next/link';
+import { RecommendationsView } from './RecommendationsView';
 
 interface RoadmapViewProps {
     inputData: any;
@@ -15,6 +18,8 @@ export function RoadmapView({ inputData }: RoadmapViewProps) {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState("option-0");
+    const [showRecs, setShowRecs] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const fetchData = async () => {
@@ -49,6 +54,10 @@ export function RoadmapView({ inputData }: RoadmapViewProps) {
         fetchData();
     }, [inputData]);
 
+    const toggleRecs = (tabValue: string) => {
+        setShowRecs(prev => ({ ...prev, [tabValue]: !prev[tabValue] }));
+    };
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center p-12 text-slate-400 space-y-4">
@@ -70,14 +79,21 @@ export function RoadmapView({ inputData }: RoadmapViewProps) {
 
     return (
         <div className="space-y-6 pb-12 w-full">
-            <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 backdrop-blur-md">
-                <h3 className="text-xl font-semibold mb-2 text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                    Career Simulation Results
-                </h3>
-                <p className="text-slate-300">We generated {data.options.length} potential futures for you.</p>
+            <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 backdrop-blur-md flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h3 className="text-xl font-semibold mb-2 text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                        Career Simulation Results
+                    </h3>
+                    <p className="text-slate-300">We generated {data.options.length} potential futures for you.</p>
+                </div>
+                <Link href="/resume">
+                    <Button variant="outline" className="border-purple-500/50 text-purple-400 hover:bg-purple-950/30">
+                        <FileText className="w-4 h-4 mr-2" /> Check Resume Fit
+                    </Button>
+                </Link>
             </div>
 
-            <Tabs defaultValue="option-0" className="w-full">
+            <Tabs defaultValue="option-0" value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="flex w-full overflow-x-auto space-x-2 bg-transparent p-1 mb-4 no-scrollbar border-none justify-start h-auto">
                     {data.options.map((opt: any, idx: number) => (
                         <TabsTrigger
@@ -94,7 +110,7 @@ export function RoadmapView({ inputData }: RoadmapViewProps) {
                 </TabsList>
 
                 {data.options.map((opt: any, idx: number) => (
-                    <TabsContent key={idx} value={`option-${idx}`} className="space-y-6 mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <TabsContent key={idx} value={`option-${idx}`} className="space-y-8 mt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Option Summary */}
                         <Card className="bg-slate-900/40 border-slate-800 backdrop-blur-md">
                             <CardContent className="pt-6">
@@ -168,6 +184,28 @@ export function RoadmapView({ inputData }: RoadmapViewProps) {
                                 </div>
                             ))}
                         </div>
+
+                        {/* Action Plan Section */}
+                        <div className="border-t border-slate-800 pt-8 mt-8">
+                            <div className="flex flex-col items-center justify-center space-y-4">
+                                <h4 className="text-lg font-semibold text-slate-300">Ready to take the next step?</h4>
+                                <Button
+                                    onClick={() => toggleRecs(`option-${idx}`)}
+                                    variant={showRecs[`option-${idx}`] ? "secondary" : "default"}
+                                    className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold shadow-lg shadow-blue-900/20 px-8 py-6 h-auto text-lg"
+                                >
+                                    {showRecs[`option-${idx}`] ? 'Hide Action Plan' : 'Generate Job & Course Plan'}
+                                    <Rocket className="ml-2 w-5 h-5" />
+                                </Button>
+                            </div>
+
+                            {showRecs[`option-${idx}`] && (
+                                <div className="mt-8">
+                                    <RecommendationsView userData={inputData} careerPath={opt.option_name} />
+                                </div>
+                            )}
+                        </div>
+
                     </TabsContent>
                 ))}
             </Tabs>
