@@ -6,7 +6,8 @@ import uvicorn
 from fastapi import File, UploadFile, Form
 import pdfplumber
 import io
-from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text
+import io
+from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights
 
 app = FastAPI(title="Career Path Simulator API")
 
@@ -107,6 +108,26 @@ class RecRequest(BaseModel):
     user_data: dict
     career_path: str
 
+# --- Market Insights Models ---
+class JobMatch(BaseModel):
+    title: str
+    company: str
+    location: str
+    match_score: int
+    type: str
+
+class MarketAnalysis(BaseModel):
+    hiring_probability: str
+    readiness_score: int
+    analysis_summary: str
+    critical_missing_skills: List[str]
+    recommended_jobs: List[JobMatch]
+
+class MarketInput(BaseModel):
+    target_role: str
+    skills: List[str]
+    location: str
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Career Path Simulator Backend is running"}
@@ -164,6 +185,20 @@ async def analyze_resume_endpoint(
         analysis = analyze_resume_text(text, career_goal)
         return analysis
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/market-insights")
+async def market_insights_endpoint(input_data: MarketInput):
+    try:
+        insights = generate_market_insights(
+            input_data.target_role, 
+            input_data.skills, 
+            input_data.location
+        )
+        if "error" in insights:
+             raise HTTPException(status_code=500, detail=insights["error"])
+        return insights
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

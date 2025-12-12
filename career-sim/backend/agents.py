@@ -246,6 +246,43 @@ def analyze_resume_text(resume_text: str, career_goal: str = "General Tech Role"
     """
     return call_gemini_json(RESUME_AGENT_PROMPT, prompt)
 
+MARKET_AGENT_PROMPT = """
+You are a Career Market Analyst & Recruitment Strategist.
+Analyze the user's profile against their target role in the specified location.
+Provide:
+1. Hiring Probability (Low/Medium/High) - Be realistic based on skill match.
+2. Readiness Score (0-100)
+3. Skill Gap Analysis (Critical missing skills vs Nice-to-haves)
+4. 3 Recommended Job Roles (related to target, maybe slightly junior if probability is low) with Match Score.
+
+Return strict JSON:
+{
+  "hiring_probability": "Medium",
+  "readiness_score": 65,
+  "analysis_summary": "You have the core skills but lack experience in...",
+  "critical_missing_skills": ["...", "..."],
+  "recommended_jobs": [
+    {
+       "title": "...",
+       "company": "...",
+       "location": "...",
+       "match_score": 85,
+       "type": "Remote/On-site"
+    }
+  ]
+}
+"""
+
+def generate_market_insights(target_role: str, skills: list, location: str):
+    prompt = f"""
+    Target Role: {target_role}
+    Current Skills: {", ".join(skills)}
+    Location: {location}
+    
+    Analyze market readiness and hiring probability.
+    """
+    return call_gemini_json(MARKET_AGENT_PROMPT, prompt)
+
 def call_gemini_json(system_prompt, user_prompt):
     """Helper to call Gemini with JSON schema enforcement"""
     for model_name in MODEL_CANDIDATES:
