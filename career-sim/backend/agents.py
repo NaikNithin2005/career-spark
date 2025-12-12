@@ -2,6 +2,7 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import json
+import time
 
 load_dotenv()
 
@@ -9,26 +10,20 @@ api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     print("Warning: GEMINI_API_KEY not found in environment variables.")
 
-# Use Gemini 1.5 Flash for speed and cost effectiveness in prototype
-# Configure for JSON output where appropriate
 genai.configure(api_key=api_key)
 
-career_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    generation_config={
-        "temperature": 0.7,
-        "response_mime_type": "application/json"
-    }
-)
-
-mentor_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    generation_config={
-        "temperature": 0.7,
-        # Mentor response is text/chat, not strict JSON usually, unless we want structure.
-        # Removing mime_type for mentor to allow natural conversation.
-    }
-)
+# Priority list of models to try
+MODEL_CANDIDATES = [
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-flash-latest",     # Added based on available models
+    "gemini-flash-lite-latest", # Added based on available models
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-pro-latest",
+    "gemini-2.0-pro-exp-02-05" 
+]
 
 CAREER_AGENT_SYSTEM_PROMPT = """
 You are the Career Agent for the Career Path Simulator.
@@ -38,6 +33,16 @@ Split the career path into 4 clear phases: Foundation, Specialization, Industry 
 
 Return strictly valid JSON.
 """
+
+def get_model(model_name, response_mime_type=None):
+    config = {"temperature": 0.7}
+    if response_mime_type:
+        config["response_mime_type"] = response_mime_type
+    
+    return genai.GenerativeModel(
+        model_name=model_name,
+        generation_config=config
+    )
 
 def generate_roadmap_ai(user_data: dict):
     prompt = f"""
@@ -59,30 +64,38 @@ def generate_roadmap_ai(user_data: dict):
       "summary": "[Overall career outlook]"
     }}
     """
-    try:
-        chat = career_model.start_chat(history=[
-            {"role": "user", "parts": [CAREER_AGENT_SYSTEM_PROMPT]}
-        ])
-        response = chat.send_message(prompt)
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"Error generating roadmap: {e}")
-        return {"error": str(e), "phases": []}
+    
+    for model_name in MODEL_CANDIDATES:
+        try:
+            print(f"Trying model: {model_name} for Roadmap...")
+            model = get_model(model_name, "application/json")
+            chat = model.start_chat(history=[
+                {"role": "user", "parts": [CAREER_AGENT_SYSTEM_PROMPT]}
+            ])
+            response = chat.send_message(prompt)
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Model {model_name} failed: {e}")
+            # Continue to next model
+            continue
+            
+    return {"error": "All AI models failed to generate a roadmap. Please try again later.", "phases": []}
 
 def get_mentor_response(history: list, message: str):
-    """
-    history: list of {"role": "user"|"model", "parts": [str]}
-    """
-    try:
-        # Prepend system instruction if new chat
-        system_instruction = "You are a helpful, human-like career mentor. Be encouraging, specific, and clear."
-        
-        # We need to construct the chat session.
-        # Gemini python lib manages history in the chat object.
-        # For a stateless API, we rebuild history.
-        chat = mentor_model.start_chat(history=history)
-        response = chat.send_message(message)
-        return response.text
-    except Exception as e:
-        print(f"Error in mentor chat: {e}")
-        return "I'm having trouble thinking right now. Please try again."
+    # Prepend system instruction if new chat (approximated by short history)
+    # Note: History passed here is raw list of dicts.
+    
+    for model_name in MODEL_CANDIDATES:
+        try:
+            print(f"Trying model: {model_name} for Chat...")
+            model = get_model(model_name) # No JSON mime type for chat
+            
+            # Rebuild chat session
+            chat = model.start_chat(history=history)
+            response = chat.send_message(message)
+            return response.text
+        except Exception as e:
+            print(f"Model {model_name} failed: {e}")
+            continue
+
+    return "I'm having trouble thinking right now. I tried multiple AI brains but none responded. Please try again in a moment."
