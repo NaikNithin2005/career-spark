@@ -35,7 +35,7 @@ interface InterviewFeedback {
 
 
 export default function InterviewPage() {
-    // --- State ---
+    
     const [step, setStep] = useState<'setup' | 'chat' | 'feedback'>('setup');
     const [loading, setLoading] = useState(false);
 
@@ -68,7 +68,7 @@ export default function InterviewPage() {
         scrollToBottom();
     }, [messages]);
 
-    // --- Voice Logic (Web Speech API) ---
+    
     useEffect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in (window as any)) {
