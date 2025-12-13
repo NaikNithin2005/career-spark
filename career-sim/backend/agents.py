@@ -6,48 +6,71 @@ from openai import OpenAI
 
 load_dotenv()
 
-api_key = os.getenv("OPENROUTER_API_KEY")
-if not api_key:
+# Parse API Keys (comma-separated support)
+api_keys_raw = os.getenv("OPENROUTER_API_KEY", "")
+API_KEYS = [k.strip() for k in api_keys_raw.split(",") if k.strip()]
+
+if not API_KEYS:
     print("Warning: OPENROUTER_API_KEY not found in environment variables.")
 
-# Initialize OpenRouter Client
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key,
-)
-
-# Priority list of models to try (OpenRouter IDs)
+# Priority list of models to try
 MODEL_CANDIDATES = [
-    "mistralai/mistral-7b-instruct:free", # Proven working
+    "mistralai/mistral-7b-instruct:free",
     "google/gemini-pro-1.5",
     "openai/gpt-3.5-turbo",
 ]
 
 # --- Helper Function ---
 def call_ai_json(system_prompt: str, user_prompt: str):
-    """Call OpenRouter with JSON enforcement"""
-    for model in MODEL_CANDIDATES:
-        try:
-            print(f"Trying model: {model}...")
-            completion = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={"type": "json_object"}, 
-            )
-            content = completion.choices[0].message.content
-            # Clean Markdown if present
-            if "```" in content:
-                content = content.replace("```json", "").replace("```", "").strip()
+    """Call OpenRouter with JSON enforcement and Key Rotation"""
+    
+    # Rotation Logic: Try every key
+    for key_idx, current_key in enumerate(API_KEYS):
+        # Initialize Client with current key
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=current_key,
+        )
+        
+        # Try Models with this key
+        for model in MODEL_CANDIDATES:
+            try:
+                # print(f"Trying Key #{key_idx+1} | Model: {model}...") 
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"}, 
+                )
+                content = completion.choices[0].message.content
+                
+                # Clean Markdown if present
+                if "```" in content:
+                    content = content.replace("```json", "").replace("```", "").strip()
+                
+                return json.loads(content)
             
-            return json.loads(content)
-        except Exception as e:
-            with open("debug_agent.log", "a") as f:
-                f.write(f"Model {model} failed: {e}\n")
-            print(f"Model {model} failed: {e}")
-            continue
+            except Exception as e:
+                print(f"Failed (Key #{key_idx+1} | {model}): {e}")
+                continue # Try next model with same key OR next key if models exhausted for this key
+        
+        print(f"Key #{key_idx+1} exhausted all models. Switching to next key...")
+    
+    # Fallback if ALL keys fail
+    print("CRITICAL: All API keys and models failed.")
+    return {
+        "message": "System currently overloaded. Please try again later.",
+        "question": "What is next?",
+        "context_id": "error_fallback",
+        "next_question": "System Unavailable",
+        "style_feedback": {
+            "clarity": "N/A",
+            "confidence": "N/A",
+            "tips": ["System Error - Offline"]
+        }
+    }
     
     # Fallback / Mock Data System
     with open("debug_agent.log", "a") as f:
@@ -523,10 +546,10 @@ Return strictly valid JSON:
 """
 
 def start_interview(role: str, focus: str, persona: str = "Friendly"):
-    persona_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Friendly"])
-    system_prompt = INTERVIEW_START_PROMPT.replace("{persona_instruction}", persona_instruction).replace("{role}", role).replace("{type}", focus)
+    persona_instr = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Friendly"])
     prompt = f"Role: {role}\nFocus: {focus}"
-    return call_ai_json(system_prompt, prompt)
+    system = INTERVIEW_START_PROMPT.replace("{role}", role).replace("{type}", focus).replace("{persona_instruction}", persona_instr)
+    return call_ai_json(system, prompt)
 
 INTERVIEW_NEXT_PROMPT = """
 {persona_instruction}
@@ -562,15 +585,11 @@ Return strictly valid JSON:
 """
 
 def next_interview_question(role: str, history: list, last_question: str, user_answer: str, persona: str = "Friendly"):
-    # Construct a brief history context if needed, or just rely on immediate previous turn for stateless simplicity
-    persona_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Friendly"])
-    system_prompt = INTERVIEW_NEXT_PROMPT.replace("{persona_instruction}", persona_instruction).replace("{role}", role)
-    prompt = f"""
-    Role: {role}
-    Previous Question: {last_question}
-    User Answer: {user_answer}
-    """
-    return call_ai_json(INTERVIEW_NEXT_PROMPT.replace("{role}", role), prompt)
+    persona_instr = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Friendly"])
+    prompt = f"Role: {role}\nPrevious Question: {last_question}\nUser Answer: {user_answer}"
+    system = INTERVIEW_NEXT_PROMPT.replace("{role}", role).replace("{last_question}", last_question).replace("{user_answer}", user_answer).replace("{persona_instruction}", persona_instr)
+    
+    return call_ai_json(system, prompt)
 
 INTERVIEW_FEEDBACK_PROMPT = """
 You are a Hiring Manager.

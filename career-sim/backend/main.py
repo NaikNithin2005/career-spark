@@ -327,12 +327,14 @@ async def generate_assessment_from_file(file: UploadFile = File(...), count: int
 class InterviewStartRequest(BaseModel):
     role: str
     focus: str = "Technical"
+    persona: str = "Friendly"
 
 class InterviewInteractionRequest(BaseModel):
     role: str
-    history: list = [] # List of {question, answer}
+    history: List[dict]
     last_question: str
     user_answer: str
+    persona: str = "Friendly"
 
 class InterviewFeedbackRequest(BaseModel):
     role: str
@@ -340,11 +342,11 @@ class InterviewFeedbackRequest(BaseModel):
 
 @app.post("/api/start-interview")
 async def api_start_interview(request: InterviewStartRequest):
-    return start_interview(request.role, request.focus)
+    return start_interview(request.role, request.focus, request.persona)
 
 @app.post("/api/interview-interaction")
 async def api_interview_interaction(request: InterviewInteractionRequest):
-    return next_interview_question(request.role, request.history, request.last_question, request.user_answer)
+    return next_interview_question(request.role, request.history, request.last_question, request.user_answer, request.persona)
 
 @app.post("/api/interview-feedback")
 async def api_interview_feedback(request: InterviewFeedbackRequest):

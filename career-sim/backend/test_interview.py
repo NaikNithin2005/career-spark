@@ -6,8 +6,12 @@ import time
 BASE_URL = "http://localhost:8000/api"
 
 def test_interview_flow():
-    print("--- Testing Start Interview ---")
-    start_payload = {"role": "Junior Python Developer", "focus": "Technical"}
+    print("--- Testing Start Interview (Ruthless Persona) ---")
+    start_payload = {
+        "role": "Junior Python Developer", 
+        "focus": "Technical",
+        "persona": "Ruthless"
+    }
     res = requests.post(f"{BASE_URL}/start-interview", json=start_payload)
     
     if res.status_code != 200:
@@ -19,12 +23,13 @@ def test_interview_flow():
     
     first_question = start_data.get("question", "What is Python?")
     
-    print("\n--- Testing Interaction (Answer 1) ---")
+    print("\n--- Testing Interaction (Wrong Answer to Ruthless) ---")
     interact_payload = {
         "role": "Junior Python Developer",
         "history": [],
         "last_question": first_question,
-        "user_answer": "Python is a high-level interpreted language known for readability."
+        "user_answer": "I don't know, maybe a snake?",
+        "persona": "Ruthless"
     }
     res = requests.post(f"{BASE_URL}/interview-interaction", json=interact_payload)
     if res.status_code != 200:
@@ -44,8 +49,8 @@ def test_interview_flow():
     print("\n--- Testing Feedback ---")
     # Simulate a short history
     history = [
-        {"question": first_question, "answer": "Python is a high-level interpreted language known for readability."},
-        {"question": next_q, "answer": "I am not sure about that details."}
+        {"question": first_question, "answer": "I don't know, maybe a snake?"},
+        {"question": next_q, "answer": "No idea."}
     ]
     
     feedback_payload = {

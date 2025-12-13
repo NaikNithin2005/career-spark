@@ -1,15 +1,38 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, MessageSquare, Mic, StopCircle, User, Bot, Trophy, AlertTriangle, Lightbulb, CheckCircle, ArrowRight, Video, Zap, Volume2, Sparkles } from 'lucide-react';
+import { Loader2, MessageSquare, Mic, StopCircle, User, Bot, Lightbulb, CheckCircle, ArrowRight, Video, Zap, Sparkles, Brain, Gavel, HeartHandshake } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Types ---
+interface Message {
+    role: 'user' | 'ai';
+    content: string;
+}
+
+interface StyleFeedback {
+    clarity: 'High' | 'Medium' | 'Low' | 'N/A';
+    confidence: 'High' | 'Medium' | 'Low' | 'N/A';
+    tips: string[];
+}
+
+interface InterviewFeedback {
+    score: number;
+    communication_rating: string;
+    confidence_rating: string;
+    improvement_suggestions: string[];
+    ideal_answers: string[];
+}
+
+
+
 
 export default function InterviewPage() {
     // --- State ---
@@ -19,20 +42,22 @@ export default function InterviewPage() {
     // Setup State
     const [role, setRole] = useState('');
     const [focus, setFocus] = useState('Technical');
+    const [persona, setPersona] = useState('Friendly'); // Friendly, Ruthless, Socratic
 
     // Chat State
-    const [messages, setMessages] = useState<any[]>([]); // { role: 'ai'|'user', content: '' }
+    const [messages, setMessages] = useState<Message[]>([]);
     const [currentInput, setCurrentInput] = useState('');
     const [lastQuestion, setLastQuestion] = useState('');
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     // Voice State
     const [isListening, setIsListening] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognitionRef = useRef<any>(null);
 
     // Feedback State
-    const [currentStyleFeedback, setCurrentStyleFeedback] = useState<any>(null);
-    const [feedback, setFeedback] = useState<any>(null);
+    const [currentStyleFeedback, setCurrentStyleFeedback] = useState<StyleFeedback | null>(null);
+    const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
 
     // --- Helpers ---
     const scrollToBottom = () => {
@@ -45,12 +70,15 @@ export default function InterviewPage() {
 
     // --- Voice Logic (Web Speech API) ---
     useEffect(() => {
-        if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in (window as any)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const SpeechRecognition = (window as any).webkitSpeechRecognition;
             recognitionRef.current = new SpeechRecognition();
             recognitionRef.current.continuous = true;
             recognitionRef.current.interimResults = true;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             recognitionRef.current.onresult = (event: any) => {
                 let transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -59,21 +87,16 @@ export default function InterviewPage() {
                 setCurrentInput(transcript);
             };
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             recognitionRef.current.onerror = (event: any) => {
                 console.error("Speech recognition error", event.error);
                 setIsListening(false);
                 if (event.error === 'not-allowed') {
-                    alert("Microphone access denied. Please allow microphone permission in your browser URL bar.");
-                } else if (event.error === 'no-speech') {
-                    // Ignore, user just didn't speak
-                } else {
-                    alert("Voice Input Error: " + event.error);
+                    alert("Microphone access denied. Please allow microphone permission.");
                 }
             };
 
             recognitionRef.current.onend = () => {
-                // Determine if we should auto-send based on silence logic or manual stop
-                // For now, let user control stop.
                 setIsListening(false);
             }
         }
@@ -84,7 +107,7 @@ export default function InterviewPage() {
             recognitionRef.current?.stop();
             setIsListening(false);
         } else {
-            setCurrentInput(''); // Clear input for fresh speech
+            setCurrentInput('');
             recognitionRef.current?.start();
             setIsListening(true);
         }
@@ -99,7 +122,7 @@ export default function InterviewPage() {
             const res = await fetch('http://localhost:8000/api/start-interview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role, focus })
+                body: JSON.stringify({ role, focus, persona })
             });
             if (!res.ok) throw new Error("Failed to start interview");
             const data = await res.json();
@@ -119,7 +142,7 @@ export default function InterviewPage() {
 
         const userMsg = currentInput;
         setCurrentInput('');
-        if (isListening) recognitionRef.current?.stop(); // Stop listening on send
+        if (isListening) recognitionRef.current?.stop();
 
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setLoading(true);
@@ -132,23 +155,22 @@ export default function InterviewPage() {
                     role,
                     history: [],
                     last_question: lastQuestion,
-                    user_answer: userMsg
+                    user_answer: userMsg,
+                    persona
                 })
             });
 
             if (!res.ok) throw new Error("Failed to send message");
             const data = await res.json();
 
-            // Store Style Feedback
             if (data.style_feedback) {
                 setCurrentStyleFeedback(data.style_feedback);
             }
 
-            // AI Response (Feedback/Transition + Next Question)
             if (data.message) {
-                setMessages(prev => [...prev, { role: 'ai', content: data.message }]);
+                setMessages((prev: Message[]) => [...prev, { role: 'ai', content: data.message }]);
             }
-            setMessages(prev => [...prev, { role: 'ai', content: data.next_question }]);
+            setMessages((prev: Message[]) => [...prev, { role: 'ai', content: data.next_question }]);
             setLastQuestion(data.next_question);
 
         } catch (e) {
@@ -192,6 +214,12 @@ export default function InterviewPage() {
         }
     };
 
+    const personas = [
+        { id: 'Friendly', icon: HeartHandshake, color: 'text-green-400', desc: 'Supportive HR style. Hints allowed.' },
+        { id: 'Ruthless', icon: Gavel, color: 'text-red-400', desc: 'Strict Tech Lead. Interrupts errors.' },
+        { id: 'Socratic', icon: Brain, color: 'text-blue-400', desc: 'Mentor style. Asks "Why?" repeatedly.' },
+    ];
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-purple-500/30">
             {/* Header */}
@@ -221,18 +249,18 @@ export default function InterviewPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="max-w-xl mx-auto space-y-8 mt-12"
+                            className="max-w-2xl mx-auto space-y-8 mt-8"
                         >
                             <div className="text-center space-y-4">
                                 <h1 className="text-4xl font-bold text-white">Mock Interview Simulator</h1>
                                 <p className="text-slate-400">
-                                    Practice your technical and behavioral skills with an adaptive AI interviewer.
+                                    Configure your session. Choose a role and your interviewer's personality.
                                 </p>
                             </div>
 
                             <Card className="bg-slate-900 border-slate-800 shadow-2xl">
-                                <CardContent className="pt-8 space-y-6">
-                                    <div className="space-y-2">
+                                <CardContent className="pt-8 space-y-8">
+                                    <div className="space-y-4">
                                         <Label className="text-lg font-medium text-white">Target Role</Label>
                                         <Input
                                             placeholder="e.g. Senior Frontend Dev, Product Manager..."
@@ -240,6 +268,28 @@ export default function InterviewPage() {
                                             onChange={(e) => setRole(e.target.value)}
                                             className="bg-slate-950 border-slate-700 h-12 text-lg text-white"
                                         />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-lg font-medium text-white">Select Interviewer Persona</Label>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {personas.map((p) => (
+                                                <div
+                                                    key={p.id}
+                                                    onClick={() => setPersona(p.id)}
+                                                    className={`p-4 rounded-xl border cursor-pointer transition-all hover:bg-slate-800 relative ${persona === p.id ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-900/20' : 'border-slate-700 bg-slate-950/50'}`}
+                                                >
+                                                    {persona === p.id && (
+                                                        <div className="absolute top-2 right-2 text-purple-500"><CheckCircle className="w-4 h-4" /></div>
+                                                    )}
+                                                    <div className={`mb-3 ${p.color}`}>
+                                                        <p.icon className="w-8 h-8" />
+                                                    </div>
+                                                    <h3 className="font-bold text-white mb-1">{p.id}</h3>
+                                                    <p className="text-xs text-slate-400 leading-relaxed">{p.desc}</p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-3">
@@ -262,7 +312,7 @@ export default function InterviewPage() {
                                     <Button
                                         onClick={handleStartInterview}
                                         disabled={!role || loading}
-                                        className="w-full h-12 text-lg bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                        className="w-full h-12 text-lg bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-xl shadow-purple-900/20"
                                     >
                                         {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Mic className="w-5 h-5 mr-2" />}
                                         Start Interview
@@ -292,7 +342,11 @@ export default function InterviewPage() {
                                         </div>
                                         <div>
                                             <h2 className="font-bold text-white leading-tight">{role}</h2>
-                                            <p className="text-xs text-slate-400 font-medium tracking-wide">LIVE SESSION • 00:00</p>
+                                            <div className="flex items-center gap-2 text-xs font-medium tracking-wide">
+                                                <span className="text-slate-400">LIVE SESSION</span>
+                                                <span className="text-slate-600">•</span>
+                                                <span className={personas.find(p => p.id === persona)?.color}>{persona} Mode</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <Button variant="destructive" size="sm" onClick={handleEndInterview} disabled={loading} className="gap-2">
@@ -331,7 +385,9 @@ export default function InterviewPage() {
                                 </div>
 
                                 {/* Input Area */}
-                                <div className="p-4 bg-slate-950 border-t border-slate-800">
+                                <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-4">
+
+
                                     <div className="flex gap-4 items-center">
                                         <Button
                                             onClick={toggleListening}
@@ -352,16 +408,12 @@ export default function InterviewPage() {
                                                 disabled={loading}
                                                 autoFocus
                                             />
-                                            {isListening && <Volume2 className="w-4 h-4 text-red-500 absolute right-4 top-4 animate-pulse" />}
                                         </div>
 
                                         <Button onClick={handleSendMessage} disabled={!currentInput.trim() || loading} className="w-12 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center shrink-0">
                                             <ArrowRight className="w-6 h-6" />
                                         </Button>
                                     </div>
-                                    <p className="text-center text-xs text-slate-500 mt-2 font-medium">
-                                        {isListening ? "Microphone Active - Speak Clearly" : "Press the Mic button to speak"}
-                                    </p>
                                 </div>
                             </div>
 
