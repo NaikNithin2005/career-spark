@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, User, Bot, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -61,7 +60,7 @@ export function MentorChat() {
 
     return (
         <div className="flex flex-col h-full bg-slate-900/30">
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 min-h-0">
                 <div className="space-y-4 pr-3">
                     {messages.map((msg, i) => (
                         <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -72,12 +71,12 @@ export function MentorChat() {
                                     <AvatarFallback className="bg-green-600 text-white"><Bot className="w-4 h-4" /></AvatarFallback>
                                 )}
                             </Avatar>
-                            <div className={`rounded-xl p-3 text-sm max-w-[85%] leading-relaxed ${msg.role === 'user'
-                                    ? 'bg-purple-600 text-white rounded-tr-none'
-                                    : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
+                            <div className={`rounded-xl p-3 text-sm max-w-[85%] leading-relaxed shadow-md ${msg.role === 'user'
+                                ? 'bg-purple-600 text-white rounded-tr-none'
+                                : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
                                 }`}>
                                 {msg.parts.map((part, j) => (
-                                    <p key={j}>{part}</p>
+                                    <p key={j} className="whitespace-pre-wrap">{part}</p>
                                 ))}
                             </div>
                         </div>
@@ -94,7 +93,7 @@ export function MentorChat() {
                     )}
                     <div ref={scrollRef} className="h-2" />
                 </div>
-            </ScrollArea>
+            </div>
             <div className="p-4 border-t border-slate-800 bg-slate-900/50">
                 <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-2">
                     <Input

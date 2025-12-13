@@ -18,10 +18,8 @@ client = OpenAI(
 
 # Priority list of models to try (OpenRouter IDs)
 MODEL_CANDIDATES = [
-    "google/gemini-2.0-flash-lite-preview-02-05:free", # Free & Fast
-    "google/gemini-2.0-flash-001",
+    "mistralai/mistral-7b-instruct:free", # Proven working
     "google/gemini-pro-1.5",
-    "mistralai/mistral-7b-instruct:free",
     "openai/gpt-3.5-turbo",
 ]
 
@@ -350,3 +348,76 @@ def generate_resume_content(user_data: dict):
         }
         
     return response
+
+# --- Skill Assessment Agents ---
+
+ASSESSMENT_GEN_PROMPT = """
+You are a Technical Interviewer & Skill Assessor.
+Generate a skill assessment quiz.
+Context:
+- Topic: {topic}
+- Difficulty: {difficulty}
+- Question Count: {count}
+
+Requirements:
+- Questions must be scenario-based (not just definition checks).
+- Provide 4 options per question.
+- Indicate the index of the correct option (0-3).
+- Include a brief explanation for the correct answer.
+
+Return strictly valid JSON:
+{
+  "questions": [
+    {
+      "id": 1,
+      "scenario": "...",
+      "question": "...",
+      "options": ["A", "B", "C", "D"],
+      "correct_index": 2,
+      "explanation": "..."
+    }
+  ]
+}
+"""
+
+def generate_assessment_quiz(topic: str, difficulty: str, count: int = 5):
+    prompt = f"""
+    Topic: {topic}
+    Difficulty: {difficulty}
+    Count: {count}
+    """
+    return call_ai_json(ASSESSMENT_GEN_PROMPT.format(topic=topic, difficulty=difficulty, count=count), prompt)
+
+ASSESSMENT_EVAL_PROMPT = """
+You are a Senior Mentor.
+Evaluate the user's quiz performance.
+Input:
+- Topic: {topic}
+- User Answers: (List of Question ID + Selected Option Index)
+- Original Quiz Context
+
+Output Requirements:
+1. Calculate score (0-100).
+2. Identify specific sub-topics/concepts the user is weak in based on wrong answers.
+3. Recommend 3 specific learning resources (docs/courses) for those weak areas.
+4. Provide a supportive but constructive summary.
+
+Return strictly valid JSON:
+{
+  "score": 80,
+  "summary": "...",
+  "weak_areas": ["...", "..."],
+  "recommendations": [
+    { "title": "...", "type": "Article/Course", "link": "..." } # use placeholder links if real ones unknown
+  ]
+}
+"""
+
+def evaluate_assessment_results(topic: str, user_answers: list, quiz_data: list):
+    prompt = f"""
+    Topic: {topic}
+    Quiz Data: {json.dumps(quiz_data)}
+    User Answers: {json.dumps(user_answers)}
+    """
+    return call_ai_json(ASSESSMENT_EVAL_PROMPT.format(topic=topic, difficulty="Adaptive", count=len(user_answers)), prompt)
+

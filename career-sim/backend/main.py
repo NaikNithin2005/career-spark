@@ -259,5 +259,34 @@ async def build_resume_endpoint(input_data: ResumeBuildRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- Assessment API ---
+
+class AssessmentGenRequest(BaseModel):
+    topic: str
+    difficulty: str = "Intermediate"
+    count: int = 5
+
+class AssessmentEvalRequest(BaseModel):
+    topic: str
+    user_answers: List[Dict[str, Any]] # e.g. [{"question_id": 1, "selected_index": 2}]
+    quiz_context: List[Dict[str, Any]] # Full quiz data to avoid statefulness in backend
+
+@app.post("/api/generate-assessment")
+async def generate_assessment_endpoint(req: AssessmentGenRequest):
+    from agents import generate_assessment_quiz
+    quiz = generate_assessment_quiz(req.topic, req.difficulty, req.count)
+    if "error" in quiz:
+        raise HTTPException(status_code=500, detail=quiz["error"])
+    return quiz
+
+@app.post("/api/evaluate-assessment")
+async def evaluate_assessment_endpoint(req: AssessmentEvalRequest):
+    from agents import evaluate_assessment_results
+    eval_result = evaluate_assessment_results(req.topic, req.user_answers, req.quiz_context)
+    if "error" in eval_result:
+        raise HTTPException(status_code=500, detail=eval_result["error"])
+    return eval_result
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

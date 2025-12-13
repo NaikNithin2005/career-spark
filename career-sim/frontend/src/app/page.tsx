@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Map, MessageSquare, GraduationCap, ArrowRight, FileText, Briefcase } from 'lucide-react';
+import { Sparkles, Map, MessageSquare, GraduationCap, ArrowRight, FileText, Briefcase, BrainCircuit } from 'lucide-react';
 import { Wizard } from '@/components/Wizard';
 import { RoadmapView } from '@/components/RoadmapView';
 import { MentorChat } from '@/components/MentorChat';
@@ -49,11 +49,11 @@ export default function Home() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-64px)] overflow-hidden">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-64px)] overflow-y-auto custom-scrollbar">
 
         {view === 'landing' ? (
-          <div className="h-full flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500">
-            <div className="text-center max-w-3xl mx-auto mb-16 space-y-6">
+          <div className="min-h-full flex flex-col items-center py-12 animate-in fade-in zoom-in-95 duration-500">
+            <div className="text-center max-w-3xl mx-auto mb-12 space-y-6">
               <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-blue-200">
                 Design Your Future.
               </h1>
@@ -128,13 +128,36 @@ export default function Home() {
                   </div>
                 </div>
               </Link>
+
+              {/* Skill Assessment Card */}
+              <Link href="/assessment" className="block">
+                <div
+                  className="group relative overflow-hidden p-8 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500/50 transition-all cursor-pointer hover:shadow-2xl hover:shadow-blue-900/20 h-full"
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <BrainCircuit className="w-24 h-24 text-blue-500" />
+                  </div>
+                  <div className="relative z-10 space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                      <BrainCircuit className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white">Skill Assessment</h3>
+                    <p className="text-slate-400">
+                      Evaluated technical quizzes with instant feedback, scoring, and personalized learning path recommendations.
+                    </p>
+                    <div className="flex items-center text-blue-400 font-semibold group-hover:translate-x-1 transition-transform">
+                      Start Test <ArrowRight className="w-4 h-4 ml-2" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
             </div>
           </div>
         ) : (
           /* Simulator View */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-full">
             {/* Left Panel: Wizard or Roadmap */}
-            <div className="lg:col-span-8 flex flex-col gap-6 h-full overflow-hidden">
+            <div className="lg:col-span-8 flex flex-col gap-6 min-h-[600px] lg:h-full overflow-hidden">
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-1 flex-1 overflow-hidden flex flex-col relative">
                 {/* Header inside panel */}
                 <div className="p-4 border-b border-slate-800 flex items-center justify-between">
@@ -161,7 +184,7 @@ export default function Home() {
             </div>
 
             {/* Right Panel: AI Mentor */}
-            <div className="lg:col-span-4 h-full flex flex-col">
+            <div className="lg:col-span-4 h-[600px] lg:h-full flex flex-col">
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl flex-1 flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-slate-800 flex items-center gap-2 bg-slate-900/80">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">

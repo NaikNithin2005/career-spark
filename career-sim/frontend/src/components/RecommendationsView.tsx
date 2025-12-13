@@ -89,7 +89,10 @@ export function RecommendationsView({ userData, careerPath }: RecommendationsVie
                                     </ul>
                                 </div>
 
-                                <Button className="w-full mt-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-600/50">
+                                <Button
+                                    onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} jobs`)}`, '_blank')}
+                                    className="w-full mt-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-600/50"
+                                >
                                     Apply Now <ExternalLink className="w-3 h-3 ml-2" />
                                 </Button>
                             </CardContent>
@@ -134,7 +137,10 @@ export function RecommendationsView({ userData, careerPath }: RecommendationsVie
                                     </div>
                                 </div>
 
-                                <Button className="w-full mt-2 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-600/50">
+                                <Button
+                                    onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(`${course.title} ${course.provider} course`)}`, '_blank')}
+                                    className="w-full mt-2 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-600/50"
+                                >
                                     Start Learning <ExternalLink className="w-3 h-3 ml-2" />
                                 </Button>
                             </CardContent>

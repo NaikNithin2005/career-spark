@@ -185,39 +185,106 @@ export default function ResumePage() {
                             </CardContent>
                         </Card>
 
-                        {/* Analysis Results */}
+                        {/* Analysis Dashboard */}
                         {analysis && (
-                            <Card className="bg-slate-900/80 border-slate-800">
-                                <CardHeader className="border-b border-slate-800 pb-4">
-                                    <div className="flex justify-between items-center">
-                                        <CardTitle className="text-xl text-white">Analysis Results</CardTitle>
-                                        <Badge className={`px-3 py-1 text-lg ${analysis.ats_score >= 80 ? 'bg-green-600' : analysis.ats_score >= 60 ? 'bg-yellow-600' : 'bg-red-600'}`}>
-                                            ATS Score: {analysis.ats_score}/100
-                                        </Badge>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="pt-6 space-y-6">
-                                    <div className="space-y-4">
-                                        <h4 className="font-semibold text-slate-300">Detailed Feedback</h4>
-                                        <ul className="space-y-3">
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {/* Top Grid: Score & Missing Keywords */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {/* Score Card */}
+                                    <Card className="bg-slate-900/50 border-slate-800 md:col-span-1 overflow-hidden relative group">
+                                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+                                        <CardHeader>
+                                            <CardTitle className="text-white text-center">ATS Compatibility</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="flex flex-col items-center justify-center pb-8">
+                                            <div className="relative w-40 h-40 flex items-center justify-center">
+                                                {/* SVG Gauge */}
+                                                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                                    {/* Background Circle */}
+                                                    <circle className="text-slate-800 stroke-current" strokeWidth="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+                                                    {/* Progress Circle */}
+                                                    <circle
+                                                        className={`stroke-current transition-all duration-1000 ease-out ${analysis.ats_score >= 75 ? "text-green-500" : analysis.ats_score >= 50 ? "text-yellow-500" : "text-red-500"}`}
+                                                        strokeWidth="8"
+                                                        strokeLinecap="round"
+                                                        cx="50"
+                                                        cy="50"
+                                                        r="40"
+                                                        fill="transparent"
+                                                        strokeDasharray={`${2 * Math.PI * 40}`}
+                                                        strokeDashoffset={`${2 * Math.PI * 40 * (1 - analysis.ats_score / 100)}`}
+                                                    ></circle>
+                                                </svg>
+                                                <div className="absolute inset-0 flex items-center justify-center flex-col">
+                                                    <span className="text-4xl font-bold text-white">{analysis.ats_score}</span>
+                                                    <span className="text-xs text-slate-400 font-medium">OUT OF 100</span>
+                                                </div>
+                                            </div>
+                                            <p className={`mt-2 text-center text-sm font-medium ${analysis.ats_score >= 75 ? "text-green-400" : "text-yellow-400"}`}>
+                                                {analysis.ats_score >= 75 ? "Excellent Match" : analysis.ats_score >= 50 ? "Needs Optimization" : "Low Compatibility"}
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* Missing Keywords (Critical) */}
+                                    <Card className="bg-slate-900/50 border-slate-800 md:col-span-2 overflow-hidden relative">
+                                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2 text-white">
+                                                <AlertTriangle className="w-5 h-5 text-red-500" />
+                                                Critical Missing Keywords
+                                            </CardTitle>
+                                            <CardDescription className="text-slate-400">
+                                                ATS systems scan for these exact terms. Add them to your resume contextually.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {analysis.missing_keywords && analysis.missing_keywords.length > 0 ? (
+                                                <div className="flex flex-wrap gap-3">
+                                                    {analysis.missing_keywords.map((kw: string, i: number) => (
+                                                        <Badge key={i} variant="outline" className="px-3 py-1.5 border-red-900/50 bg-red-950/20 text-red-300 hover:bg-red-900/40 cursor-copy active:scale-95 transition-transform" title="Click to copy (implied)">
+                                                            + {kw}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-green-400 bg-green-950/30 p-4 rounded-lg border border-green-900">
+                                                    <CheckCircle className="w-5 h-5" />
+                                                    <span>Great job! No critical keywords seem to be missing for this role.</span>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {/* Bottom Grid: Detailed Advice */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Improvements */}
+                                    <Card className="bg-slate-900/50 border-slate-800">
+                                        <CardHeader><CardTitle className="text-white flex items-center gap-2"><Wand2 className="w-4 h-4 text-purple-400" /> Actionable Feedback</CardTitle></CardHeader>
+                                        <CardContent className="space-y-4">
                                             {(analysis.improvements || []).map((item: string, i: number) => (
-                                                <li key={i} className="flex gap-3 text-slate-400 text-sm bg-slate-950/50 p-3 rounded-lg border border-slate-800/50">
-                                                    <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
+                                                <div key={i} className="flex gap-3 text-slate-300 text-sm p-4 rounded-lg bg-slate-950/50 border border-slate-800 hover:border-slate-700 transition-colors">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5 shrink-0" />
                                                     {item}
-                                                </li>
+                                                </div>
                                             ))}
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold text-slate-300 mb-3">Detected Skills</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {(analysis.skills_found || []).map((skill: string, i: number) => (
-                                                <Badge key={i} variant="secondary" className="bg-slate-800 text-purple-300 hover:bg-slate-700">{skill}</Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* Detected Skills */}
+                                    <Card className="bg-slate-900/50 border-slate-800">
+                                        <CardHeader><CardTitle className="text-white flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-400" /> Verified Skills</CardTitle></CardHeader>
+                                        <CardContent>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(analysis.skills_found || []).map((skill: string, i: number) => (
+                                                    <Badge key={i} className="bg-slate-800 text-slate-200 border-none px-3 py-1.5 hover:bg-slate-700 hover:text-white transition-colors">{skill}</Badge>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
                         )}
                     </TabsContent>
 
