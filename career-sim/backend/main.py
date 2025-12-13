@@ -8,7 +8,7 @@ import pdfplumber
 import io
 import io
 import io
-from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_resume_content, generate_project_guide
+from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_resume_content, generate_project_guide, generate_assessment_quiz, evaluate_assessment_results, generate_assessment_from_text
 
 app = FastAPI(title="Career Path Simulator API")
 
@@ -286,6 +286,41 @@ async def evaluate_assessment_endpoint(req: AssessmentEvalRequest):
     if "error" in eval_result:
         raise HTTPException(status_code=500, detail=eval_result["error"])
     return eval_result
+
+@app.post("/api/generate-assessment-from-file")
+async def generate_assessment_from_file(file: UploadFile = File(...), count: int = Form(10)):
+    try:
+        content = ""
+        if file.filename.endswith(".pdf"):
+            # Process PDF
+            pdf_bytes = await file.read()
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        content += text + "\n"
+        else:
+             # Process Text/Markdown
+            content_bytes = await file.read()
+            content = content_bytes.decode("utf-8")
+        
+        if not content.strip():
+             # Fallback if empty or failed extract
+            raise HTTPException(status_code=400, detail="Could not extract text from file.")
+
+        print(f"DEBUG: Extracted content length: {len(content)}")
+        print(f"DEBUG: Content preview: {content[:100]}...")
+
+        # Assuming generate_assessment_from_text is defined elsewhere, e.g., in agents.py
+        from agents import generate_assessment_from_text 
+        quiz = generate_assessment_from_text(content, count)
+        if "error" in quiz:
+            raise HTTPException(status_code=500, detail=quiz["error"])
+        return quiz
+
+    except Exception as e:
+        print(f"Error processing file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

@@ -44,10 +44,14 @@ def call_ai_json(system_prompt: str, user_prompt: str):
             
             return json.loads(content)
         except Exception as e:
+            with open("debug_agent.log", "a") as f:
+                f.write(f"Model {model} failed: {e}\n")
             print(f"Model {model} failed: {e}")
             continue
     
     # Fallback Error
+    with open("debug_agent.log", "a") as f:
+        f.write("All models failed.\n")
     return {"error": "All AI models failed. Please try again later."}
 
 def call_ai_chat(history: list, message: str):
@@ -417,3 +421,45 @@ def evaluate_assessment_results(topic: str, user_answers: list, quiz_data: list)
     """
     return call_ai_json(ASSESSMENT_EVAL_PROMPT, prompt)
 
+
+ASSESSMENT_FROM_TEXT_PROMPT = """
+You are a Technical Interviewer.
+Generate a skill assessment quiz based STRICTLY on the provided text context.
+
+Context:
+{context_text}
+
+Requirements:
+- Generate {count} questions derived from the text.
+- Questions must test understanding of the provided content.
+- Provide 4 options per question.
+- Indicate the index of the correct option (0-3).
+- Include a brief explanation.
+
+Return strictly valid JSON:
+{
+  "questions": [
+    {
+      "id": 1,
+      "scenario": "...",
+      "question": "...",
+      "options": ["A", "B", "C", "D"],
+      "correct_index": 2,
+      "explanation": "..."
+    }
+  ]
+}
+"""
+
+def generate_assessment_from_text(text_content: str, count: int = 10):
+    # Truncate text to avoid token limits if necessary (e.g. 15k chars)
+    truncated_text = text_content[:15000]
+    
+    prompt = f"""
+    Generate {count} questions based on the above context.
+    """
+    
+    # Pre-fill the system prompt with the context to keep it focused
+    system_prompt = ASSESSMENT_FROM_TEXT_PROMPT.replace("{context_text}", truncated_text).replace("{count}", str(count))
+    
+    return call_ai_json(system_prompt, prompt)

@@ -20,6 +20,8 @@ export default function AssessmentPage() {
     const [topic, setTopic] = useState('');
     const [difficulty, setDifficulty] = useState('Intermediate');
     const [questionCount, setQuestionCount] = useState(5);
+    const [assessmentMode, setAssessmentMode] = useState<'topic' | 'file'>('topic');
+    const [file, setFile] = useState<File | null>(null);
 
     // Quiz State
     const [quizData, setQuizData] = useState<any>(null);
@@ -32,14 +34,28 @@ export default function AssessmentPage() {
     // --- Handlers ---
 
     const handleGenerateQuiz = async () => {
-        if (!topic) return;
+        if (assessmentMode === 'topic' && !topic) return;
+        if (assessmentMode === 'file' && !file) return;
+
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8000/api/generate-assessment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, difficulty, count: questionCount })
-            });
+            let res;
+            if (assessmentMode === 'topic') {
+                res = await fetch('http://localhost:8000/api/generate-assessment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, difficulty, count: questionCount })
+                });
+            } else {
+                const formData = new FormData();
+                formData.append('file', file!);
+                formData.append('count', questionCount.toString());
+                res = await fetch('http://localhost:8000/api/generate-assessment-from-file', {
+                    method: 'POST',
+                    body: formData
+                });
+            }
+
             if (!res.ok) throw new Error("Failed to generate quiz");
             const data = await res.json();
 
@@ -135,59 +151,103 @@ export default function AssessmentPage() {
 
                             <Card className="bg-slate-900 border-slate-800 shadow-2xl">
                                 <CardContent className="pt-8 space-y-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-lg font-medium text-white">Skill / Topic</Label>
-                                        <Input
-                                            placeholder="e.g. React, Python Data Science, Project Management..."
-                                            value={topic}
-                                            onChange={(e) => setTopic(e.target.value)}
-                                            className="bg-slate-950 border-slate-700 h-12 text-lg text-white"
-                                        />
+                                    {/* Tabs for Mode Selection */}
+                                    <div className="bg-slate-950 p-1 rounded-lg flex mb-4">
+                                        <button
+                                            onClick={() => setAssessmentMode('topic')}
+                                            className={`flex-1 py-3 rounded-md text-sm font-semibold transition-all ${assessmentMode === 'topic' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+                                        >
+                                            Topic / Skill
+                                        </button>
+                                        <button
+                                            onClick={() => setAssessmentMode('file')}
+                                            className={`flex-1 py-3 rounded-md text-sm font-semibold transition-all ${assessmentMode === 'file' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+                                        >
+                                            Upload Paper (PDF/Text)
+                                        </button>
                                     </div>
 
-                                    <div className="space-y-6">
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-medium text-white uppercase tracking-wider">Difficulty Level</Label>
-                                            <RadioGroup defaultValue="Intermediate" onValueChange={setDifficulty} className="grid grid-cols-3 gap-4">
-                                                {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
-                                                    <div key={level}>
-                                                        <RadioGroupItem value={level} id={level} className="peer sr-only" />
-                                                        <Label
-                                                            htmlFor={level}
-                                                            className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-white hover:bg-slate-800 hover:border-slate-600 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all text-sm font-medium"
-                                                        >
-                                                            {level}
-                                                        </Label>
-                                                    </div>
-                                                ))}
-                                            </RadioGroup>
-                                        </div>
+                                    {assessmentMode === 'topic' ? (
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-lg font-medium text-white">Skill / Topic</Label>
+                                                <Input
+                                                    placeholder="e.g. React, Python Data Science, Project Management..."
+                                                    value={topic}
+                                                    onChange={(e) => setTopic(e.target.value)}
+                                                    className="bg-slate-950 border-slate-700 h-12 text-lg text-white"
+                                                />
+                                            </div>
 
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-medium text-white uppercase tracking-wider">Question Count</Label>
-                                            <RadioGroup defaultValue="5" onValueChange={(v) => setQuestionCount(parseInt(v))} className="grid grid-cols-3 gap-4">
-                                                {[5, 10, 15].map((num) => (
-                                                    <div key={num}>
-                                                        <RadioGroupItem value={num.toString()} id={`q${num}`} className="peer sr-only" />
-                                                        <Label
-                                                            htmlFor={`q${num}`}
-                                                            className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-white hover:bg-slate-800 hover:border-slate-600 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all text-sm font-medium"
-                                                        >
-                                                            {num} Questions
-                                                        </Label>
-                                                    </div>
-                                                ))}
-                                            </RadioGroup>
+                                            <div className="space-y-6">
+                                                <div className="space-y-3">
+                                                    <Label className="text-sm font-medium text-white uppercase tracking-wider">Difficulty Level</Label>
+                                                    <RadioGroup defaultValue="Intermediate" onValueChange={setDifficulty} className="grid grid-cols-3 gap-4">
+                                                        {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
+                                                            <div key={level}>
+                                                                <RadioGroupItem value={level} id={level} className="peer sr-only" />
+                                                                <Label
+                                                                    htmlFor={level}
+                                                                    className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-white hover:bg-slate-800 hover:border-slate-600 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all text-sm font-medium"
+                                                                >
+                                                                    {level}
+                                                                </Label>
+                                                            </div>
+                                                        ))}
+                                                    </RadioGroup>
+                                                </div>
+                                            </div>
                                         </div>
+                                    ) : (
+                                        <div className="space-y-6">
+                                            <div className="border-2 border-dashed border-slate-700 rounded-xl bg-slate-950/50 p-8 text-center hover:border-blue-500/50 transition-colors cursor-pointer relative">
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,.txt,.md"
+                                                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                />
+                                                <div className="flex flex-col items-center justify-center space-y-4">
+                                                    <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center">
+                                                        {file ? <CheckCircle className="w-8 h-8 text-green-500" /> : <ExternalLink className="w-8 h-8 text-slate-500" />}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-white">
+                                                            {file ? file.name : "Click to Upload Paper"}
+                                                        </h3>
+                                                        <p className="text-slate-400 text-sm mt-1">
+                                                            {file ? "Ready to analyze" : "Supports PDF, TXT, MD"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-3">
+                                        <Label className="text-sm font-medium text-white uppercase tracking-wider">Question Count</Label>
+                                        <RadioGroup defaultValue="5" onValueChange={(v) => setQuestionCount(parseInt(v))} className="grid grid-cols-3 gap-4">
+                                            {[5, 10, 15].map((num) => (
+                                                <div key={num}>
+                                                    <RadioGroupItem value={num.toString()} id={`q${num}`} className="peer sr-only" />
+                                                    <Label
+                                                        htmlFor={`q${num}`}
+                                                        className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-white hover:bg-slate-800 hover:border-slate-600 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all text-sm font-medium"
+                                                    >
+                                                        {num} Questions
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </RadioGroup>
                                     </div>
 
                                     <Button
                                         onClick={handleGenerateQuiz}
-                                        disabled={!topic || loading}
+                                        disabled={loading || (assessmentMode === 'topic' ? !topic : !file)}
                                         className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold"
                                     >
                                         {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <BrainCircuit className="w-5 h-5 mr-2" />}
-                                        Start Assessment
+                                        {assessmentMode === 'topic' ? 'Start Assessment' : 'Analyze Paper & Start'}
                                     </Button>
                                 </CardContent>
                             </Card>

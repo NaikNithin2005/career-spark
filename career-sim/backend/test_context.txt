@@ -1,0 +1,10 @@
+
+Python is a high-level, interpreted programming language known for its readability and versatility.
+Key concepts include:
+- Lists: ordered, mutable collections.
+- Tuples: ordered, immutable collections.
+- Dictionaries: key-value pairs.
+- Functions: defined using 'def'.
+- Classes: blueprints for objects (OOP).
+- Decorators: modify function behavior.
+- Generators: using 'yield' for memory efficiency.
