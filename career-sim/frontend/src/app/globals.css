@@ -146,4 +146,10 @@
     background-color: oklch(0.556 0 0);
     /* muted-foreground */
   }
+
+  ::selection {
+    background-color: rgba(225, 29, 72, 0.3);
+    /* Rose 600 with opacity */
+    color: #fff;
+  }
 }

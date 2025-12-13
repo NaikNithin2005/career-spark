@@ -6,6 +6,7 @@ import { Wizard } from '@/components/Wizard';
 import { RoadmapView } from '@/components/RoadmapView';
 import { MentorChat } from '@/components/MentorChat';
 import Link from 'next/link';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 export default function Home() {
   // Application State
@@ -24,15 +25,15 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-purple-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-rose-500/30">
       {/* Navbar */}
-      <nav className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('landing')}>
-            <div className="bg-gradient-to-tr from-purple-500 to-blue-500 p-2 rounded-lg">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10">
+              <Sparkles className="w-5 h-5 text-rose-500" />
             </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+            <span className="text-xl font-bold text-slate-100 tracking-tight">
               Career Spark
             </span>
           </div>
@@ -43,7 +44,7 @@ export default function Home() {
               </button>
             )}
             <div className="h-4 w-[1px] bg-slate-800 hidden sm:block"></div>
-            <Link href="/resume" className="hover:text-white transition-colors">Resume AI</Link>
+            <FeedbackModal />
           </div>
         </div>
       </nav>
@@ -175,6 +176,8 @@ export default function Home() {
                 </div>
               </Link>
             </div>
+
+
           </div>
         ) : (
           /* Simulator View */
