@@ -11,7 +11,7 @@ print(f"Found {len(API_KEYS)} keys.")
 
 MODEL = "mistralai/mistral-7b-instruct:free"
 
-for i, key in enumerate(API_KEYS[1:2], start=1):
+for i, key in enumerate(API_KEYS):
     masked_key = key[:10] + "..." + key[-4:] if len(key) > 14 else "INVALID"
     print(f"\nTesting Key #{i+1}: {masked_key}")
     
