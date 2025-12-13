@@ -117,28 +117,46 @@ def call_ai_chat(history: list, message: str):
     
     messages = []
     # Convert incompatible history if present (simple conversion)
-    for h in history:
-        if "role" in h and "parts" in h: # Gemini format
-            role = "assistant" if h["role"] == "model" else "user"
-            content = h["parts"][0] if isinstance(h["parts"], list) else str(h["parts"])
-            messages.append({"role": role, "content": content})
-        else:
-            messages.append(h)
+    try:
+        for h in history:
+            if "role" in h and "parts" in h: # Gemini format
+                role = "assistant" if h["role"] == "model" else "user"
+                # Safe access to parts
+                parts = h["parts"]
+                content = ""
+                if isinstance(parts, list):
+                    content = parts[0] if len(parts) > 0 else ""
+                else:
+                    content = str(parts)
+                
+                messages.append({"role": role, "content": content})
+            else:
+                messages.append(h)
+    except Exception as e:
+        print(f"Error processing history: {e}")
             
     messages.append({"role": "user", "content": message})
 
-    for model in MODEL_CANDIDATES:
-        try:
-            print(f"Trying chat model: {model}...")
-            completion = client.chat.completions.create(
-                model=model,
-                messages=messages
-            )
-            return completion.choices[0].message.content
-        except Exception as e:
-            print(f"Chat Model {model} failed: {e}")
-            continue
+    for key_idx, current_key in enumerate(API_KEYS):
+        # Initialize Client each time to rotate keys (or reuse if optimized, but here we recreate)
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=current_key,
+        )
+
+        for model in MODEL_CANDIDATES:
+            try:
+                print(f"Trying chat model: {model} with Key #{key_idx+1}...")
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=messages
+                )
+                return completion.choices[0].message.content
+            except Exception as e:
+                print(f"Chat Model {model} failed with Key #{key_idx+1}: {e}")
+                continue
             
+    print("CRITICAL: All chat models/keys failed.")
     return "I'm having trouble connecting to my brain right now. Please try again."
 
 # --- Prompts ---

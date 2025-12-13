@@ -137,8 +137,8 @@ export default function ResumePage() {
 
                 <Tabs defaultValue="validator" className="w-full print:hidden">
                     <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-slate-900 border border-slate-800 rounded-xl mb-8 p-1">
-                        <TabsTrigger value="validator" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg">Resume Validator</TabsTrigger>
-                        <TabsTrigger value="builder" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg">AI Resume Builder</TabsTrigger>
+                        <TabsTrigger value="validator" className="text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg">Resume Validator</TabsTrigger>
+                        <TabsTrigger value="builder" className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg">AI Resume Builder</TabsTrigger>
                     </TabsList>
 
                     {/* --- VALIDATOR TAB --- */}

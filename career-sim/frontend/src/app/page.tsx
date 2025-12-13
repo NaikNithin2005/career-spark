@@ -30,9 +30,6 @@ export default function Home() {
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('landing')}>
-            <div className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10">
-              <Sparkles className="w-5 h-5 text-rose-500" />
-            </div>
             <span className="text-xl font-bold text-slate-100 tracking-tight">
               Career Spark
             </span>
