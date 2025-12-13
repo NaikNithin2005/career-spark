@@ -38,6 +38,10 @@ def call_ai_json(system_prompt: str, user_prompt: str):
                 response_format={"type": "json_object"}, 
             )
             content = completion.choices[0].message.content
+            # Clean Markdown if present
+            if "```" in content:
+                content = content.replace("```json", "").replace("```", "").strip()
+            
             return json.loads(content)
         except Exception as e:
             print(f"Model {model} failed: {e}")
@@ -354,10 +358,6 @@ def generate_resume_content(user_data: dict):
 ASSESSMENT_GEN_PROMPT = """
 You are a Technical Interviewer & Skill Assessor.
 Generate a skill assessment quiz.
-Context:
-- Topic: {topic}
-- Difficulty: {difficulty}
-- Question Count: {count}
 
 Requirements:
 - Questions must be scenario-based (not just definition checks).
@@ -386,15 +386,11 @@ def generate_assessment_quiz(topic: str, difficulty: str, count: int = 5):
     Difficulty: {difficulty}
     Count: {count}
     """
-    return call_ai_json(ASSESSMENT_GEN_PROMPT.format(topic=topic, difficulty=difficulty, count=count), prompt)
+    return call_ai_json(ASSESSMENT_GEN_PROMPT, prompt)
 
 ASSESSMENT_EVAL_PROMPT = """
 You are a Senior Mentor.
 Evaluate the user's quiz performance.
-Input:
-- Topic: {topic}
-- User Answers: (List of Question ID + Selected Option Index)
-- Original Quiz Context
 
 Output Requirements:
 1. Calculate score (0-100).
@@ -408,7 +404,7 @@ Return strictly valid JSON:
   "summary": "...",
   "weak_areas": ["...", "..."],
   "recommendations": [
-    { "title": "...", "type": "Article/Course", "link": "..." } # use placeholder links if real ones unknown
+    { "title": "...", "type": "Article/Course", "link": "..." }
   ]
 }
 """
@@ -419,5 +415,5 @@ def evaluate_assessment_results(topic: str, user_answers: list, quiz_data: list)
     Quiz Data: {json.dumps(quiz_data)}
     User Answers: {json.dumps(user_answers)}
     """
-    return call_ai_json(ASSESSMENT_EVAL_PROMPT.format(topic=topic, difficulty="Adaptive", count=len(user_answers)), prompt)
+    return call_ai_json(ASSESSMENT_EVAL_PROMPT, prompt)
 

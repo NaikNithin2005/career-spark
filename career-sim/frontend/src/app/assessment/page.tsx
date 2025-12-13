@@ -19,6 +19,7 @@ export default function AssessmentPage() {
     // Setup State
     const [topic, setTopic] = useState('');
     const [difficulty, setDifficulty] = useState('Intermediate');
+    const [questionCount, setQuestionCount] = useState(5);
 
     // Quiz State
     const [quizData, setQuizData] = useState<any>(null);
@@ -37,7 +38,7 @@ export default function AssessmentPage() {
             const res = await fetch('http://localhost:8000/api/generate-assessment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, difficulty, count: 5 })
+                body: JSON.stringify({ topic, difficulty, count: questionCount })
             });
             if (!res.ok) throw new Error("Failed to generate quiz");
             const data = await res.json();
@@ -140,25 +141,44 @@ export default function AssessmentPage() {
                                             placeholder="e.g. React, Python Data Science, Project Management..."
                                             value={topic}
                                             onChange={(e) => setTopic(e.target.value)}
-                                            className="bg-slate-950 border-slate-700 h-12 text-lg"
+                                            className="bg-slate-950 border-slate-700 h-12 text-lg text-white"
                                         />
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <Label className="text-lg font-medium text-white">Difficulty</Label>
-                                        <RadioGroup defaultValue="Intermediate" onValueChange={setDifficulty} className="grid grid-cols-3 gap-4">
-                                            {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
-                                                <div key={level}>
-                                                    <RadioGroupItem value={level} id={level} className="peer sr-only" />
-                                                    <Label
-                                                        htmlFor={level}
-                                                        className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-800 bg-slate-950 p-4 hover:bg-slate-900 hover:text-white peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all"
-                                                    >
-                                                        {level}
-                                                    </Label>
-                                                </div>
-                                            ))}
-                                        </RadioGroup>
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium text-white uppercase tracking-wider">Difficulty Level</Label>
+                                            <RadioGroup defaultValue="Intermediate" onValueChange={setDifficulty} className="grid grid-cols-3 gap-4">
+                                                {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
+                                                    <div key={level}>
+                                                        <RadioGroupItem value={level} id={level} className="peer sr-only" />
+                                                        <Label
+                                                            htmlFor={level}
+                                                            className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-white hover:bg-slate-800 hover:border-slate-600 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all text-sm font-medium"
+                                                        >
+                                                            {level}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </RadioGroup>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium text-white uppercase tracking-wider">Question Count</Label>
+                                            <RadioGroup defaultValue="5" onValueChange={(v) => setQuestionCount(parseInt(v))} className="grid grid-cols-3 gap-4">
+                                                {[5, 10, 15].map((num) => (
+                                                    <div key={num}>
+                                                        <RadioGroupItem value={num.toString()} id={`q${num}`} className="peer sr-only" />
+                                                        <Label
+                                                            htmlFor={`q${num}`}
+                                                            className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-white hover:bg-slate-800 hover:border-slate-600 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500/10 peer-data-[state=checked]:text-blue-400 cursor-pointer transition-all text-sm font-medium"
+                                                        >
+                                                            {num} Questions
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </RadioGroup>
+                                        </div>
                                     </div>
 
                                     <Button
@@ -206,8 +226,8 @@ export default function AssessmentPage() {
                                             key={idx}
                                             onClick={() => handleSelectOption(quizData.questions[currentQIndex].id, idx)}
                                             className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${answers[quizData.questions[currentQIndex].id] === idx
-                                                    ? "border-blue-500 bg-blue-500/10 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                                                    : "border-slate-800 bg-slate-950/50 text-slate-300 hover:border-slate-600 hover:bg-slate-900"
+                                                ? "border-blue-500 bg-blue-500/10 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                                                : "border-slate-800 bg-slate-950/50 text-slate-300 hover:border-slate-600 hover:bg-slate-900"
                                                 }`}
                                         >
                                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${answers[quizData.questions[currentQIndex].id] === idx ? "border-blue-500" : "border-slate-600"
@@ -327,12 +347,16 @@ export default function AssessmentPage() {
                                     <CardContent>
                                         <div className="space-y-4">
                                             {result.recommendations?.map((rec: any, i: number) => (
-                                                <div key={i} className="flex justify-between items-start gap-4 p-3 rounded-lg bg-slate-950 hover:bg-slate-900 transition-colors border border-slate-800">
+                                                <div
+                                                    key={i}
+                                                    onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(`${rec.title} ${rec.type}`)}`, '_blank')}
+                                                    className="flex justify-between items-start gap-4 p-3 rounded-lg bg-slate-950 hover:bg-slate-900 transition-colors border border-slate-800 cursor-pointer group"
+                                                >
                                                     <div>
-                                                        <h4 className="font-semibold text-slate-200">{rec.title}</h4>
+                                                        <h4 className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">{rec.title}</h4>
                                                         <Badge variant="secondary" className="mt-1 text-xs">{rec.type}</Badge>
                                                     </div>
-                                                    <ExternalLink className="w-4 h-4 text-slate-500" />
+                                                    <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-blue-400" />
                                                 </div>
                                             ))}
                                         </div>
