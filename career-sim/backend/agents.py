@@ -10,6 +10,8 @@ load_dotenv()
 api_keys_raw = os.getenv("OPENROUTER_API_KEY", "")
 API_KEYS = [k.strip() for k in api_keys_raw.split(",") if k.strip()]
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 if not API_KEYS:
     print("Warning: OPENROUTER_API_KEY not found in environment variables.")
 

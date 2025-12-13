@@ -11,7 +11,7 @@ import { Loader2, MessageSquare, Mic, StopCircle, User, Bot, Lightbulb, CheckCir
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Types ---
+
 interface Message {
     role: 'user' | 'ai';
     content: string;
