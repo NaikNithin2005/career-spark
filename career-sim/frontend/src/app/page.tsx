@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Map, MessageSquare, GraduationCap, ArrowRight, FileText, Briefcase, BrainCircuit } from 'lucide-react';
+import { Sparkles, Map, MessageSquare, GraduationCap, ArrowRight, FileText, Briefcase, BrainCircuit, Mic } from 'lucide-react';
 import { Wizard } from '@/components/Wizard';
 import { RoadmapView } from '@/components/RoadmapView';
 import { MentorChat } from '@/components/MentorChat';
@@ -147,6 +147,29 @@ export default function Home() {
                     </p>
                     <div className="flex items-center text-blue-400 font-semibold group-hover:translate-x-1 transition-transform">
                       Start Test <ArrowRight className="w-4 h-4 ml-2" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              {/* AI Interview Card */}
+              <Link href="/interview" className="block">
+                <div
+                  className="group relative overflow-hidden p-8 rounded-2xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 transition-all cursor-pointer hover:shadow-2xl hover:shadow-indigo-900/20 h-full"
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Mic className="w-24 h-24 text-indigo-500" />
+                  </div>
+                  <div className="relative z-10 space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                      <Mic className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white">Mock Interviewer</h3>
+                    <p className="text-slate-400">
+                      Practice with an adaptive AI interviewer. Get real-time questions, feedback, and confidence scores.
+                    </p>
+                    <div className="flex items-center text-indigo-400 font-semibold group-hover:translate-x-1 transition-transform">
+                      Start Interview <ArrowRight className="w-4 h-4 ml-2" />
                     </div>
                   </div>
                 </div>

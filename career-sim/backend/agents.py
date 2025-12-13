@@ -49,9 +49,42 @@ def call_ai_json(system_prompt: str, user_prompt: str):
             print(f"Model {model} failed: {e}")
             continue
     
-    # Fallback Error
+    # Fallback / Mock Data System
     with open("debug_agent.log", "a") as f:
-        f.write("All models failed.\n")
+        f.write("All models failed. Attempting Mock Fallback.\n")
+    
+    # Mock for Interview Start
+    if "Technical Interviewer" in system_prompt and "Start" in system_prompt:
+        return {
+            "message": "Welcome to your Mock Interview (AI Unavailable). Let's begin!",
+            "question": "Could you explain the difference between a Process and a Thread?",
+            "context_id": "mock-123"
+        }
+    
+    # Mock for Interview Next
+    if "Technical Interviewer" in system_prompt and "Continue" in system_prompt:
+        return {
+             "feedback_internal": "Mock feedback: Good answer.",
+             "style_feedback": {
+                  "clarity": "High",
+                  "confidence": "Medium",
+                  "tips": ["Good use of terminology.", "Try to be more direct."]
+             },
+             "message": "That's correct. Moving on...",
+             "next_question": "How does memory management work in this context?"
+        }
+
+    # Mock for Interview Feedback
+    if "Hiring Manager" in system_prompt:
+        return {
+            "score": 85,
+            "communication_rating": "High",
+            "confidence_rating": "Medium",
+            "feedback": "This is a generated mock feedback because the AI service is currently unreachable. You demonstrated good knowledge.",
+            "ideal_answers": ["Thread shares memory, Process does not.", "GIL limits threads in Python."],
+            "improvement_suggestions": ["Deepen understanding of OS concepts.", "Practice concise explanations."]
+        }
+        
     return {"error": "All AI models failed. Please try again later."}
 
 def call_ai_chat(history: list, message: str):
@@ -463,3 +496,101 @@ def generate_assessment_from_text(text_content: str, count: int = 10):
     system_prompt = ASSESSMENT_FROM_TEXT_PROMPT.replace("{context_text}", truncated_text).replace("{count}", str(count))
     
     return call_ai_json(system_prompt, prompt)
+
+# --- Interview Module Agents ---
+
+
+PERSONA_PROMPTS = {
+    "Friendly": "You are a supportive and encouraging HR interviewer. Be warm, helpful, and give hints if the candidate is stuck. Focus on potential.",
+    "Ruthless": "You are a strict and demanding Senior Tech Lead. Interrupt if the answer is wrong. Drill deep into edge cases. Be skeptical and expect high precision.",
+    "Socratic": "You are a wise Mentor using the Socratic method. NEVER give the answer. Ask 'Why?' and 'How?' recursively to guide the user to the solution."
+}
+
+INTERVIEW_START_PROMPT = """
+{persona_instruction}
+Start an interview for the role: {role}.
+Focus: {type} (Technical/Behavioral).
+
+Generate the first welcoming message and the FIRST question.
+The question should be relevant to the role and focus.
+
+Return strictly valid JSON:
+{
+  "message": "Welcome...",
+  "question": "First question...",
+  "context_id": "unique_id_if_needed"
+}
+"""
+
+def start_interview(role: str, focus: str, persona: str = "Friendly"):
+    persona_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Friendly"])
+    system_prompt = INTERVIEW_START_PROMPT.replace("{persona_instruction}", persona_instruction).replace("{role}", role).replace("{type}", focus)
+    prompt = f"Role: {role}\nFocus: {focus}"
+    return call_ai_json(system_prompt, prompt)
+
+INTERVIEW_NEXT_PROMPT = """
+{persona_instruction}
+Continue the interview.
+Current Role: {role}
+Previous Question: {last_question}
+User Answer: {user_answer}
+
+Analyze the user's answer.
+1. valid/good?
+2. follow-up needed?
+
+Generate the NEXT question. It should adapt to the user's depth.
+If the answer was weak, ask a simpler fundamental question.
+If strong, ask a deeper follow-up.
+
+Also, provide "Style Feedback" on their communication style (implied from text).
+- Clarity: Is it concise or rambling?
+- Confidence: Do they sound sure or hesitant?
+- Tone: Professional?
+
+Return strictly valid JSON:
+{
+  "feedback_internal": "Brief thought on user answer",
+  "style_feedback": {
+      "clarity": "High/Medium/Low",
+      "confidence": "High/Medium/Low",
+      "tips": ["Tip 1", "Tip 2"]
+  },
+  "message": "Transition phrase (e.g. 'Good point regarding X...')",
+  "next_question": "The actual next question"
+}
+"""
+
+def next_interview_question(role: str, history: list, last_question: str, user_answer: str, persona: str = "Friendly"):
+    # Construct a brief history context if needed, or just rely on immediate previous turn for stateless simplicity
+    persona_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["Friendly"])
+    system_prompt = INTERVIEW_NEXT_PROMPT.replace("{persona_instruction}", persona_instruction).replace("{role}", role)
+    prompt = f"""
+    Role: {role}
+    Previous Question: {last_question}
+    User Answer: {user_answer}
+    """
+    return call_ai_json(INTERVIEW_NEXT_PROMPT.replace("{role}", role), prompt)
+
+INTERVIEW_FEEDBACK_PROMPT = """
+You are a Hiring Manager.
+The interview is over. Evaluate the candidate.
+
+History:
+{history}
+
+Output Requirements:
+1. Score (0-100).
+2. Communication Rating (Low/Mid/High).
+3. Confidence Rating (Low/Mid/High).
+4. Feedback (What went well, what didn't).
+5. Ideal Answers for the top 3 hardest questions asked.
+6. 3 Improvement Suggestions.
+
+Return strictly valid JSON.
+"""
+
+def end_interview(role: str, history: list):
+    # History format: [{question: "", answer: ""}, ...]
+    prompt = f"Role: {role}\nHistory: {json.dumps(history)}"
+    return call_ai_json(INTERVIEW_FEEDBACK_PROMPT, prompt)

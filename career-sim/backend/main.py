@@ -8,7 +8,7 @@ import pdfplumber
 import io
 import io
 import io
-from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_resume_content, generate_project_guide, generate_assessment_quiz, evaluate_assessment_results, generate_assessment_from_text
+from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_resume_content, generate_project_guide, generate_assessment_quiz, evaluate_assessment_results, generate_assessment_from_text, start_interview, next_interview_question, end_interview
 
 app = FastAPI(title="Career Path Simulator API")
 
@@ -321,6 +321,35 @@ async def generate_assessment_from_file(file: UploadFile = File(...), count: int
     except Exception as e:
         print(f"Error processing file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Interview Module API ---
+
+class InterviewStartRequest(BaseModel):
+    role: str
+    focus: str = "Technical"
+
+class InterviewInteractionRequest(BaseModel):
+    role: str
+    history: list = [] # List of {question, answer}
+    last_question: str
+    user_answer: str
+
+class InterviewFeedbackRequest(BaseModel):
+    role: str
+    history: list # Full conversation history
+
+@app.post("/api/start-interview")
+async def api_start_interview(request: InterviewStartRequest):
+    return start_interview(request.role, request.focus)
+
+@app.post("/api/interview-interaction")
+async def api_interview_interaction(request: InterviewInteractionRequest):
+    return next_interview_question(request.role, request.history, request.last_question, request.user_answer)
+
+@app.post("/api/interview-feedback")
+async def api_interview_feedback(request: InterviewFeedbackRequest):
+    return end_interview(request.role, request.history)
+
 
 
 if __name__ == "__main__":
