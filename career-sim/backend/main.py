@@ -8,7 +8,7 @@ import pdfplumber
 import io
 import io
 import io
-from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_project_guide
+from agents import generate_roadmap_ai, get_mentor_response, generate_job_recommendations, generate_course_recommendations, analyze_resume_text, generate_market_insights, generate_job_prep, generate_project_guide, generate_resume_content, generate_project_guide
 
 app = FastAPI(title="Career Path Simulator API")
 
@@ -138,6 +138,14 @@ class ProjectGuideRequest(BaseModel):
     title: str
     description: str
 
+class ResumeBuildRequest(BaseModel):
+    name: str
+    email: str
+    phone: str
+    experience: str
+    education: str
+    skills: str
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Career Path Simulator Backend is running"}
@@ -193,6 +201,8 @@ async def analyze_resume_endpoint(
              raise HTTPException(status_code=400, detail="Could not extract text from PDF.")
              
         analysis = analyze_resume_text(text, career_goal)
+        if "error" in analysis:
+             raise HTTPException(status_code=500, detail=analysis["error"])
         return analysis
         
     except Exception as e:
@@ -236,6 +246,16 @@ async def project_guide_endpoint(input_data: ProjectGuideRequest):
         if "error" in guide:
              raise HTTPException(status_code=500, detail=guide["error"])
         return guide
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/build-resume")
+async def build_resume_endpoint(input_data: ResumeBuildRequest):
+    try:
+        resume = generate_resume_content(input_data.dict())
+        if "error" in resume:
+             raise HTTPException(status_code=500, detail=resume["error"])
+        return resume
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

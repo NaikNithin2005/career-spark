@@ -1,29 +1,85 @@
 import os
-import google.generativeai as genai
-from dotenv import load_dotenv
 import json
 import time
+from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
+api_key = os.getenv("OPENROUTER_API_KEY")
 if not api_key:
-    print("Warning: GEMINI_API_KEY not found in environment variables.")
+    print("Warning: OPENROUTER_API_KEY not found in environment variables.")
 
-genai.configure(api_key=api_key)
+# Initialize OpenRouter Client
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+)
 
-# Priority list of models to try
+# Priority list of models to try (OpenRouter IDs)
 MODEL_CANDIDATES = [
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-flash-latest",     # Added based on available models
-    "gemini-flash-lite-latest", # Added based on available models
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-pro-latest",
-    "gemini-2.0-pro-exp-02-05" 
+    "google/gemini-2.0-flash-lite-preview-02-05:free", # Free & Fast
+    "google/gemini-2.0-flash-001",
+    "google/gemini-pro-1.5",
+    "mistralai/mistral-7b-instruct:free",
+    "openai/gpt-3.5-turbo",
 ]
+
+# --- Helper Function ---
+def call_ai_json(system_prompt: str, user_prompt: str):
+    """Call OpenRouter with JSON enforcement"""
+    for model in MODEL_CANDIDATES:
+        try:
+            print(f"Trying model: {model}...")
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format={"type": "json_object"}, 
+            )
+            content = completion.choices[0].message.content
+            return json.loads(content)
+        except Exception as e:
+            print(f"Model {model} failed: {e}")
+            continue
+    
+    # Fallback Error
+    return {"error": "All AI models failed. Please try again later."}
+
+def call_ai_chat(history: list, message: str):
+    """Call OpenRouter for Chat (No JSON)"""
+    # Convert history format if needed, for now assume simple list
+    # OpenRouter expects {"role": "user/assistant", "content": "..."}
+    
+    messages = []
+    # Convert incompatible history if present (simple conversion)
+    for h in history:
+        if "role" in h and "parts" in h: # Gemini format
+            role = "assistant" if h["role"] == "model" else "user"
+            content = h["parts"][0] if isinstance(h["parts"], list) else str(h["parts"])
+            messages.append({"role": role, "content": content})
+        else:
+            messages.append(h)
+            
+    messages.append({"role": "user", "content": message})
+
+    for model in MODEL_CANDIDATES:
+        try:
+            print(f"Trying chat model: {model}...")
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            print(f"Chat Model {model} failed: {e}")
+            continue
+            
+    return "I'm having trouble connecting to my brain right now. Please try again."
+
+# --- Prompts ---
 
 CAREER_AGENT_SYSTEM_PROMPT = """
 You are an advanced AI Career Architect.
@@ -48,123 +104,58 @@ Identify:
 Return strictly valid JSON.
 """
 
-def get_model(model_name, response_mime_type=None):
-    config = {"temperature": 0.7}
-    if response_mime_type:
-        config["response_mime_type"] = response_mime_type
-    
-    return genai.GenerativeModel(
-        model_name=model_name,
-        generation_config=config
-    )
+# --- Agent Functions ---
 
 def generate_profile_insights(user_data: dict):
     prompt = f"""
     Analyze this profile and provide insights:
     {json.dumps(user_data, indent=2)}
     
-    Structure response as:
+    Structure response as JSON:
     {{
-        "strengths": ["...", "...", "..."],
-        "weaknesses": ["...", "...", "..."],
-        "suggestions": ["...", "...", "..."],
+        "strengths": ["...", "..."],
+        "weaknesses": ["...", "..."],
+        "suggestions": ["...", "..."],
         "market_readiness": "High/Medium/Low - Reason"
     }}
     """
-    
-    for model_name in MODEL_CANDIDATES:
-        try:
-            print(f"Trying model: {model_name} for Insights...")
-            model = get_model(model_name, "application/json")
-            chat = model.start_chat(history=[
-                {"role": "user", "parts": [INSIGHTS_AGENT_PROMPT]}
-            ])
-            response = chat.send_message(prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Model {model_name} failed: {e}")
-            continue
-            
-    return {"error": "Failed to generate insights.", "strengths": [], "weaknesses": [], "suggestions": [], "market_readiness": "Unknown"}
+    return call_ai_json(INSIGHTS_AGENT_PROMPT, prompt)
 
 def generate_roadmap_ai(user_data: dict):
     prompt = f"""
     Generate 3 distinct career options for:
     {json.dumps(user_data, indent=2)}
     
-    Structure the response as:
+    Structure the response as JSON:
     {{
-      "options": [
+        "options": [
         {{
-          "option_name": "Name of path (e.g. Corporate Ladder / Startup Hustle)",
-          "match_score": 85,
-          "summary": "Brief explanation of why this fits.",
-          "phases": [
+            "option_name": "Name of path (e.g. Corporate Ladder / Startup Hustle)",
+            "match_score": 85,
+            "summary": "Brief explanation of why this fits.",
+            "phases": [
             {{
-              "title": "Phase 1: [Name]",
-              "duration": "[Time]",
-              "description": "[Details]",
-              "skills": ["A", "B"],
-              "actions": ["Do X", "Do Y"]
+                "title": "Phase 1: [Name]",
+                "duration": "[Time]",
+                "description": "[Details]",
+                "skills": ["A", "B"],
+                "actions": ["Do X", "Do Y"]
             }}
-            ... (4 phases)
-          ]
+            ]
         }}
-        ... (3 options)
-      ]
+        ]
     }}
     """
-    
-    for model_name in MODEL_CANDIDATES:
-        try:
-            print(f"Trying model: {model_name} for Roadmap...")
-            model = get_model(model_name, "application/json")
-            chat = model.start_chat(history=[
-                {"role": "user", "parts": [CAREER_AGENT_SYSTEM_PROMPT]}
-            ])
-            response = chat.send_message(prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Model {model_name} failed: {e}")
-            continue
-            
-    return {"error": "All AI models failed to generate a roadmap. Please try again later.", "options": []}
+    return call_ai_json(CAREER_AGENT_SYSTEM_PROMPT, prompt)
 
 def get_mentor_response(history: list, message: str):
-    # Prepend system instruction if new chat (approximated by short history)
-    # Note: History passed here is raw list of dicts.
-    
-    for model_name in MODEL_CANDIDATES:
-        try:
-            print(f"Trying model: {model_name} for Chat...")
-            model = get_model(model_name) # No JSON mime type for chat
-            
-            # Rebuild chat session
-            chat = model.start_chat(history=history)
-            response = chat.send_message(message)
-            return response.text
-        except Exception as e:
-            print(f"Model {model_name} failed: {e}")
-            with open("api_errors.log", "a") as f:
-                import datetime
-                f.write(f"[{datetime.datetime.now()}] Model {model_name} failed: {str(e)}\n")
-            continue
-
-    return "I'm having trouble thinking right now. I tried multiple AI brains but none responded. Please try again in a moment."
+    return call_ai_chat(history, message)
 
 # --- Phase 3 Agents ---
 
 JOB_AGENT_PROMPT = """
 You are a Recruitment AI.
 Based on the user's profile and selected career path, generate 3 realistic job postings they could target.
-For each job:
-1. Job Title
-2. Company Name (Invent realistic, modern tech names)
-3. Salary Range (Realistic for the role/location)
-4. Location (Based on user pref or generic tech hubs)
-5. Key Requirements (3-4 bullets)
-6. Why this matches (1 sentence)
-
 Return strict JSON:
 {
   "jobs": [
@@ -182,14 +173,7 @@ Return strict JSON:
 
 COURSE_AGENT_PROMPT = """
 You are a Learning Pathway Architect.
-Based on the user's profile and gaps, recommend 3 specific courses/certifications.
-For each course:
-1. Course Title
-2. Provider (e.g., Coursera, Udemy, edX, YouTube)
-3. Duration (e.g., "8 weeks", "10 hours")
-4. Skills Learned (2-3 skills)
-5. Difficulty (Beginner/Intermediate/Advanced)
-
+Recommend 3 specific courses/certifications.
 Return strict JSON:
 {
   "courses": [
@@ -207,12 +191,6 @@ Return strict JSON:
 RESUME_AGENT_PROMPT = """
 You are an expert ATS (Applicant Tracking System) & Career Coach.
 Analyze the candidate's resume text against their target career goals.
-Provide:
-1. ATS Score (0-100) - Be strict but fair.
-2. Key Skills Found (List)
-3. Missing Keywords/Skills (Crucial for their target role)
-4. 3 Specific Actionable Improvements (e.g., "Quantify your impact in the X project")
-
 Return strict JSON:
 {
   "ats_score": 75,
@@ -228,7 +206,7 @@ def generate_job_recommendations(user_data: dict, career_path: str):
     Selected Career Path: {career_path}
     Generate 3 relevant job postings.
     """
-    return call_gemini_json(JOB_AGENT_PROMPT, prompt)
+    return call_ai_json(JOB_AGENT_PROMPT, prompt)
 
 def generate_course_recommendations(user_data: dict, career_path: str):
     prompt = f"""
@@ -236,7 +214,7 @@ def generate_course_recommendations(user_data: dict, career_path: str):
     Selected Career Path: {career_path}
     Generate 3 course recommendations to bridge skill gaps.
     """
-    return call_gemini_json(COURSE_AGENT_PROMPT, prompt)
+    return call_ai_json(COURSE_AGENT_PROMPT, prompt)
 
 def analyze_resume_text(resume_text: str, career_goal: str = "General Tech Role"):
     prompt = f"""
@@ -244,23 +222,22 @@ def analyze_resume_text(resume_text: str, career_goal: str = "General Tech Role"
     Resume Content:
     {resume_text[:10000]} 
     """
-    return call_gemini_json(RESUME_AGENT_PROMPT, prompt)
+    return call_ai_json(RESUME_AGENT_PROMPT, prompt)
 
 MARKET_AGENT_PROMPT = """
-You are a Career Market Analyst & Recruitment Strategist.
-Analyze the user's profile against their target role in the specified location.
-Provide:
-1. Hiring Probability (Low/Medium/High) - Be realistic based on skill match.
-2. Readiness Score (0-100)
-3. Skill Gap Analysis (Critical missing skills vs Nice-to-haves)
-4. 3 Recommended Job Roles (related to target, maybe slightly junior if probability is low) with Match Score.
+You are a Career Market Analyst.
+Analyze:
+1. Hiring Probability
+2. Readiness Score
+3. Skill Gap Analysis
+4. 3 Recommended Job Roles
 
 Return strict JSON:
 {
   "hiring_probability": "Medium",
   "readiness_score": 65,
-  "analysis_summary": "You have the core skills but lack experience in...",
-  "critical_missing_skills": ["...", "..."],
+  "analysis_summary": "...",
+  "critical_missing_skills": ["..."],
   "recommended_jobs": [
     {
        "title": "...",
@@ -278,27 +255,19 @@ def generate_market_insights(target_role: str, skills: list, location: str):
     Target Role: {target_role}
     Current Skills: {", ".join(skills)}
     Location: {location}
-    
-    Analyze market readiness and hiring probability.
+    analyze market readiness.
     """
-    return call_gemini_json(MARKET_AGENT_PROMPT, prompt)
+    return call_ai_json(MARKET_AGENT_PROMPT, prompt)
 
 JOB_PREP_AGENT_PROMPT = """
-You are a Tech Career Coach & Interviewer.
-For the specific Job Title and Company (optional), provide a targeted preparation guide.
-Provide:
-1. 3 Likely Interview Questions (Technical/Behavioral mixed).
-2. 5 Strategic Resume Keywords to include.
-3. 1 "Portfolio Project" idea that would impress them.
-4. A brief "Why You Match" summary based on user skills.
-
+You are a Tech Career Coach.
+Provide a targeted preparation guide.
 Return strict JSON:
 {
   "interview_questions": [
-    { "question": "...", "type": "Technical/Behavioral", "answer_tip": "..." },
-    ...
+    { "question": "...", "type": "Technical/Behavioral", "answer_tip": "..." }
   ],
-  "resume_keywords": ["...", "..."],
+  "resume_keywords": ["..."],
   "project_challenge": {
      "title": "...",
      "description": "..."
@@ -312,28 +281,18 @@ def generate_job_prep(job_title: str, company: str, skills: list):
     Job Title: {job_title}
     Company: {company}
     My Skills: {", ".join(skills)}
-    
     Create a prep guide.
     """
-    return call_gemini_json(JOB_PREP_AGENT_PROMPT, prompt)
+    return call_ai_json(JOB_PREP_AGENT_PROMPT, prompt)
 
 PROJECT_AGENT_PROMPT = """
 You are a Senior Tech Lead.
-Create a mini-implementation plan for the given Portfolio Project.
-Project Title: {title}
-Description: {description}
-
-Provide:
-1. Tech Stack Recommended (List)
-2. 4-5 Step-by-Step Implementation Tasks
-3. A "Bonus Challenge" to make it stand out.
-
+Create a mini-implementation plan.
 Return strict JSON:
 {
-  "tech_stack": ["...", "..."],
+  "tech_stack": ["..."],
   "steps": [
-    {"step": 1, "title": "...", "details": "..."},
-    ...
+    {"step": 1, "title": "...", "details": "..."}
   ],
   "bonus_challenge": "..."
 }
@@ -344,20 +303,50 @@ def generate_project_guide(title: str, description: str):
     Project: {title}
     Context: {description}
     """
-    return call_gemini_json(PROJECT_AGENT_PROMPT, prompt)
+    return call_ai_json(PROJECT_AGENT_PROMPT, prompt)
 
-def call_gemini_json(system_prompt, user_prompt):
-    """Helper to call Gemini with JSON schema enforcement"""
-    for model_name in MODEL_CANDIDATES:
-        try:
-            model = get_model(model_name, "application/json")
-            chat = model.start_chat(history=[{"role": "user", "parts": [system_prompt]}])
-            response = chat.send_message(user_prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Model {model_name} failed: {e}")
-            with open("api_errors.log", "a") as f:
-                import datetime
-                f.write(f"[{datetime.datetime.now()}] {model_name} Error: {e}\n")
-            continue
-    return {"error": "Failed to generate response"}
+RESUME_BUILDER_PROMPT = """
+Act as a Resume Writer.
+Rewrite the provided details into a professional JSON resume.
+Use action verbs. Keep it concise.
+
+Return strict JSON:
+{
+  "summary": "2-sentence professional summary.",
+  "experience": [
+    { "role": "...", "company": "...", "dates": "...", "points": ["...", "..."] }
+  ],
+  "education": [
+    { "degree": "...", "school": "...", "year": "..." }
+  ],
+  "skills": ["..."]
+}
+"""
+
+def generate_resume_content(user_data: dict):
+    prompt = f"""
+    User Data: {user_data}
+    """
+    response = call_ai_json(RESUME_BUILDER_PROMPT, prompt)
+    
+    # Simple Fallback if NULL or Error
+    if not response or "error" in response:
+        print("Using Fallback Mock Data for Resume")
+        fallback_skills = user_data.get("skills", "").split(",") if user_data.get("skills") else ["Python", "Problem Solving"]
+        return {
+          "summary": f"Aspiring professional with a background in {user_data.get('education', 'tech')}.",
+          "experience": [
+            { 
+                "role": "Project Contributor", 
+                "company": "Projects / Academic", 
+                "dates": "Recent", 
+                "points": ["Collaborated in team settings.", "Optimized workflows."] 
+            }
+          ],
+          "education": [
+            { "degree": user_data.get("education", "Degree"), "school": "University/Institute", "year": "2024" }
+          ],
+          "skills": fallback_skills
+        }
+        
+    return response
